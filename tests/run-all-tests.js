@@ -116,6 +116,56 @@ async function runTests() {
     assert.strictEqual(res.body.error.code, 'ACCOUNT_INACTIVE');
   });
 
+  // 6b. Registration: User self-registration
+  const testRegEmail = `reg.${Date.now()}@teamsync.internal`;
+  await test('POST /auth/register creates user account and returns token', async () => {
+    const res = await req('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Registered Employee',
+        email: testRegEmail,
+        password: 'Password@123',
+        role_id: 3,
+        department_id: 1,
+        job_title: 'Software Developer'
+      })
+    });
+    assert.strictEqual(res.status, 201);
+    assert.ok(res.body.data.token);
+    assert.strictEqual(res.body.data.user.email, testRegEmail);
+    assert.strictEqual(res.body.data.user.role_key, 'EMPLOYEE');
+  });
+
+  // 6c. Registration: Disallow self-registering as ADMIN
+  await test('POST /auth/register rejects role_id 1 (ADMIN) with 403 FORBIDDEN_ROLE', async () => {
+    const res = await req('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Fake Admin',
+        email: `fake.admin.${Date.now()}@test.com`,
+        password: 'Password@123',
+        role_id: 1
+      })
+    });
+    assert.strictEqual(res.status, 403);
+    assert.strictEqual(res.body.error.code, 'FORBIDDEN_ROLE');
+  });
+
+  // 6d. Registration: Duplicate email rejected
+  await test('POST /auth/register rejects duplicate email with 400 DUPLICATE_EMAIL', async () => {
+    const res = await req('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Duplicate Employee',
+        email: testRegEmail,
+        password: 'Password@123',
+        role_id: 3
+      })
+    });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error.code, 'DUPLICATE_EMAIL');
+  });
+
   // 7. Security: Employee forbidden from Admin-only endpoints
   await test('Employee calling POST /users is rejected with 403 FORBIDDEN', async () => {
     const res = await req('/users', {

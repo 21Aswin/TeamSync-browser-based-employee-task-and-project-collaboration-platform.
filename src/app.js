@@ -3,8 +3,11 @@ const path = require('path');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const apiRoutes = require('./routes/api');
+const { phpHandler } = require('./middleware/phpHandler');
 
 const app = express();
+
+const publicDir = path.join(__dirname, '../public');
 
 // Middlewares
 app.use(cors({
@@ -15,8 +18,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// PHP Handler middleware for .php files
+app.use(phpHandler(publicDir));
+
 // Serve static frontend assets
-app.use(express.static(path.join(__dirname, '../public')));
+app.use(express.static(publicDir));
 
 // API Routes
 app.use('/api/v1', apiRoutes);

@@ -59,6 +59,22 @@ Or an HTTP-only secure cookie named `token`.
 ```
 - **Errors:** `401 INVALID_CREDENTIALS`, `403 ACCOUNT_INACTIVE`, `429 TOO_MANY_REQUESTS`.
 
+#### `POST /auth/register` (Public, Rate-Limited)
+- Creates a new Employee or Manager account.
+- **Body:**
+```json
+{
+  "name": "Alex Mercer",
+  "email": "alex.m@teamsync.internal",
+  "password": "Password@123",
+  "role_id": 3,
+  "department_id": 1,
+  "job_title": "Full Stack Developer"
+}
+```
+- **Success (201):** Returns signed JWT token and user profile.
+- **Errors:** `400 VALIDATION_ERROR`, `400 DUPLICATE_EMAIL`, `403 FORBIDDEN_ROLE` (admin self-registration prohibited).
+
 #### `POST /auth/logout` (Authenticated)
 - Clears session cookies and invalidates client session state.
 

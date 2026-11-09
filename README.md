@@ -9,7 +9,7 @@
 ## 1. Executive Summary
 
 TeamSync is a browser-based employee task and project collaboration platform engineered with:
-- **Frontend:** Pure HTML5, CSS3, and Vanilla JavaScript (Fetch API, zero heavy frameworks, served via Node.js).
+- **Frontend:** Pure HTML5, CSS3, PHP, and Vanilla JavaScript (Fetch API, zero heavy frameworks, served directly via Node.js Express with live PHP execution engine).
 - **Backend:** Node.js with structured layers (Routes, Controllers, Services, Repositories).
 - **Database:** MySQL 8.0 (Strict InnoDB, Foreign Keys, Unique Constraints, Parameterized Queries, and Transactions).
 - **Real-time:** Socket.IO with authenticated connections and server-side authorized rooms.
@@ -183,8 +183,11 @@ teamsync/
 │   └── utils/
 │       ├── response.js       # Standardized JSON response formatting
 │       └── statusRules.js    # Centralized status transition rules
-├── public/                   # Static frontend served by Node.js
-│   ├── index.html            # Main HTML5 semantic structure
+├── public/                   # Frontend served by Node.js with PHP support
+│   ├── index.php             # Main workspace PHP entrypoint
+│   ├── register.php          # Dedicated Registration Page in PHP
+│   ├── login.php             # Dedicated Login Page in PHP
+│   ├── includes/             # PHP partials (header.php, footer.php)
 │   ├── css/
 │   │   └── style.css         # Stitch Warm Sand Precision CSS tokens
 │   └── js/

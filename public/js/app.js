@@ -249,6 +249,10 @@ const App = {
             </button>
           </form>
 
+          <div style="margin-top:16px;text-align:center;font-size:13px;color:var(--text-muted);">
+            Don't have an account? <a href="/register.php" style="font-weight:600;color:var(--primary);">Create an Account</a>
+          </div>
+
           <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border-color);">
             <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-tertiary);margin-bottom:10px;text-align:center;">
               Quick Demo Accounts (Password: Password@123)

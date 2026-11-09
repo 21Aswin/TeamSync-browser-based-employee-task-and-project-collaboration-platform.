@@ -26,6 +26,29 @@ async function login(req, res) {
   }
 }
 
+async function register(req, res) {
+  try {
+    const result = await authService.register(req.body);
+
+    res.cookie('token', result.token, {
+      httpOnly: true,
+      secure: process.env.COOKIE_SECURE === 'true',
+      sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000
+    });
+
+    return success(res, result, 201);
+  } catch (err) {
+    return error(
+      res,
+      err.message || 'Registration failed.',
+      err.statusCode || 400,
+      err.code || 'REGISTRATION_ERROR',
+      err.details || []
+    );
+  }
+}
+
 async function logout(req, res) {
   res.clearCookie('token');
   return success(res, { message: 'Logged out successfully.' }, 200);
@@ -37,6 +60,7 @@ async function getCurrentUser(req, res) {
 
 module.exports = {
   login,
+  register,
   logout,
   getCurrentUser
 };
