@@ -1,0 +1,36 @@
+{
+  "name": "teamsync",
+  "version": "1.0.0",
+  "description": "TeamSync - Browser-based employee task and project collaboration platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "migrate": "node src/database/migrate.js",
+    "seed": "node src/database/seed.js",
+    "test": "node tests/run-all-tests.js && node tests/verify-realtime-sessions.js"
+  },
+  "keywords": [
+    "teamsync",
+    "collaboration",
+    "kanban",
+    "socketio",
+    "mysql"
+  ],
+  "author": "21Aswin",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.12.0",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
+  }
+}
