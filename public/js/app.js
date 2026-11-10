@@ -701,6 +701,84 @@ const App = {
   },
 
   /* -------------------------------------------------------------
+     ADD PROJECT MEMBER MODAL
+     ------------------------------------------------------------- */
+  async openAddMemberModal(projectId) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    try {
+      const [proj, usersRes] = await Promise.all([
+        API.getProject(projectId),
+        API.getUsers({ status: 'ACTIVE' })
+      ]);
+      const currentMemberIds = new Set((proj.members || []).map(m => m.id));
+      const availableUsers = (usersRes.data || []).filter(u => !currentMemberIds.has(u.id));
+
+      modal.innerHTML = `
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3>Add Member to Project: ${proj.project_code}</h3>
+            <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+          </div>
+          <form onsubmit="App.handleAddMember(event, ${projectId})">
+            <div class="modal-body">
+              ${availableUsers.length === 0 ? `
+                <div style="padding:24px;text-align:center;color:var(--text-muted);">
+                  All active employees are already members of this project.
+                </div>
+              ` : `
+                <div class="form-group">
+                  <label class="form-label">Select Employee <span class="req">*</span></label>
+                  <select id="add-member-user-id" class="form-control" required>
+                    <option value="">-- Choose Employee --</option>
+                    ${availableUsers.map(u => `
+                      <option value="${u.id}">${u.name} (${u.role_key} - ${u.job_title || u.department_name || 'General'})</option>
+                    `).join('')}
+                  </select>
+                </div>
+              `}
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+              ${availableUsers.length > 0 ? `
+                <button type="submit" class="btn btn-primary" id="btn-save-member">
+                  <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                  Add Member
+                </button>
+              ` : ''}
+            </div>
+          </form>
+        </div>
+      `;
+    } catch (err) {
+      showToast(err.message || 'Failed to load users', 'error');
+    }
+  },
+
+  async handleAddMember(e, projectId) {
+    e.preventDefault();
+    const userId = document.getElementById('add-member-user-id')?.value;
+    if (!userId) return;
+    const btn = document.getElementById('btn-save-member');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Adding...';
+    }
+    try {
+      await API.addProjectMember(projectId, parseInt(userId, 10));
+      this.closeModal();
+      showToast('Member added to project successfully!', 'success');
+      this.renderProjectDetails(document.getElementById('main-content-view'), projectId);
+    } catch (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg> Add Member`;
+      }
+      showToast(err.message || 'Failed to add member', 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
      EDIT PROJECT MODAL
      ------------------------------------------------------------- */
   async openEditProjectModal(projectId) {
@@ -742,7 +820,10 @@ const App = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-edit-proj">
+                <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                Save Project Changes
+              </button>
             </div>
           </form>
         </div>
@@ -1157,7 +1238,10 @@ const App = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Task Changes</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-edit-task">
+                <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                Save Task Changes
+              </button>
             </div>
           </form>
         </div>
@@ -1241,7 +1325,10 @@ const App = {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Create Project</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-project">
+              <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+              Save Project
+            </button>
           </div>
         </form>
       </div>
@@ -1250,6 +1337,11 @@ const App = {
 
   async handleCreateProject(e) {
     e.preventDefault();
+    const btn = document.getElementById('btn-save-project');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+    }
     const name = document.getElementById('new-proj-name').value;
     const project_code = document.getElementById('new-proj-code').value;
     const description = document.getElementById('new-proj-desc').value;
@@ -1264,6 +1356,10 @@ const App = {
       showToast('Project created successfully!', 'success');
       this.navigate('projects');
     } catch (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg> Save Project`;
+      }
       showToast(err.message || 'Failed to create project.', 'error');
     }
   },
@@ -1344,7 +1440,10 @@ const App = {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Create Task</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-task">
+              <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+              Save & Create Task
+            </button>
           </div>
         </form>
       </div>
@@ -1552,7 +1651,10 @@ const App = {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Employee</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-emp">
+              <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+              Save Employee
+            </button>
           </div>
         </form>
       </div>
@@ -1631,7 +1733,10 @@ const App = {
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary">Save Changes</button>
+              <button type="submit" class="btn btn-primary" id="btn-save-edit-emp">
+                <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+                Save Employee Changes
+              </button>
             </div>
           </form>
         </div>
@@ -1737,7 +1842,10 @@ const App = {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Department</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-dept">
+              <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+              Save Department
+            </button>
           </div>
         </form>
       </div>
@@ -1784,7 +1892,10 @@ const App = {
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="submit" class="btn btn-primary" id="btn-save-edit-dept">
+              <svg style="width:15px;height:15px;margin-right:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg>
+              Save Department Changes
+            </button>
           </div>
         </form>
       </div>

@@ -682,13 +682,14 @@ a:hover {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background-color: rgba(32, 42, 53, 0.4);
+  background-color: rgba(32, 42, 53, 0.45);
   backdrop-filter: blur(4px);
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 1000;
   padding: var(--space-md);
+  overflow-y: auto;
 }
 
 .modal-backdrop.show {
@@ -706,11 +707,23 @@ a:hover {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  margin: auto;
+}
+
+.modal-dialog form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .modal-header {
+  flex-shrink: 0;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-color);
+  background-color: var(--surface-card);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -720,20 +733,29 @@ a:hover {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-main);
+  margin: 0;
 }
 
 .modal-body {
   padding: 20px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-footer {
+  flex-shrink: 0;
   padding: 14px 20px;
   border-top: 1px solid var(--border-color);
   background-color: var(--surface-hover);
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--space-sm);
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 /* Form Controls */
