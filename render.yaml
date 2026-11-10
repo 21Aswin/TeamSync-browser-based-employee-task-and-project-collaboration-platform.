@@ -1,28 +1,5 @@
 services:
   - type: web
     name: teamsync-web
-    env: node
+    env: docker
     plan: free
-    buildCommand: npm install
-    startCommand: node src/database/migrate.js && node src/database/seed.js && npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-      - key: DB_HOST
-        sync: false
-      - key: DB_PORT
-        value: 3306
-      - key: DB_USER
-        sync: false
-      - key: DB_PASSWORD
-        sync: false
-      - key: DB_NAME
-        value: teamsync_db
-      - key: JWT_SECRET
-        generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 24h
-      - key: COOKIE_SECURE
-        value: "true"
