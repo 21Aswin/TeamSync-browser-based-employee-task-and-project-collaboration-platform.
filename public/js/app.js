@@ -1142,13 +1142,28 @@ const App = {
      TASK DETAILS MODAL (WITH EDIT TASK OPTION)
      ------------------------------------------------------------- */
   async openTaskDetails(taskId) {
-    this.currentTaskId = taskId;
+    const parsedId = parseInt(taskId, 10);
+    if (!parsedId || isNaN(parsedId) || parsedId <= 0) {
+      return;
+    }
+    this.currentTaskId = parsedId;
     const modal = document.getElementById('modal-container');
+    if (!modal) return;
     modal.classList.add('show');
-    modal.innerHTML = `<div class="modal-dialog"><div class="modal-body" style="text-align:center;padding:40px;">Loading task details...</div></div>`;
+    modal.innerHTML = `
+      <div class="modal-dialog" style="max-width:440px;">
+        <div class="modal-header">
+          <h3 style="font-size:15px;font-weight:600;">Task Details</h3>
+          <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+        </div>
+        <div class="modal-body" style="text-align:center;padding:36px;color:var(--text-muted);font-size:13px;">
+          Loading task details...
+        </div>
+      </div>
+    `;
 
     try {
-      const task = await API.getTask(taskId);
+      const task = await API.getTask(parsedId);
       const u = this.currentUser;
       const canManage = u.role_key === 'ADMIN' || u.id === task.manager_id;
 
@@ -1240,7 +1255,20 @@ const App = {
         </div>
       `;
     } catch (err) {
-      modal.innerHTML = `<div class="modal-dialog"><div class="modal-body" style="color:var(--danger-text);padding:20px;">Failed to load task: ${err.message}</div></div>`;
+      modal.innerHTML = `
+        <div class="modal-dialog" style="max-width:440px;">
+          <div class="modal-header">
+            <h3 style="color:var(--danger-text);font-size:15px;font-weight:600;">Task Not Available</h3>
+            <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+          </div>
+          <div class="modal-body" style="padding:20px;font-size:13px;color:var(--text-main);line-height:1.5;">
+            ${err.message || 'The requested task could not be loaded or may have been deleted.'}
+          </div>
+          <div class="modal-footer" style="display:flex;justify-content:flex-end;padding:12px 20px;background:var(--surface-secondary);border-top:1px solid var(--border-color);border-radius:0 0 var(--radius-md) var(--radius-md);">
+            <button class="btn btn-secondary btn-sm" onclick="App.closeModal()">Close</button>
+          </div>
+        </div>
+      `;
     }
   },
 
@@ -2230,9 +2258,10 @@ const App = {
 
         container.innerHTML = notifs.map(n => {
           const isUnread = !n.read_at;
-          const taskId = n.reference_id ? n.reference_id : null;
+          const refTypeStr = n.reference_type ? `'${n.reference_type}'` : 'null';
+          const refIdVal = (n.reference_id !== null && n.reference_id !== undefined) ? n.reference_id : 'null';
           return `
-            <div class="notif-item ${isUnread ? 'unread' : ''}" style="${isUnread ? 'background-color:rgba(14,116,144,0.06);' : ''}" onclick="App.handleNotifClick(${n.id}, ${taskId})">
+            <div class="notif-item ${isUnread ? 'unread' : ''}" style="${isUnread ? 'background-color:rgba(14,116,144,0.06);' : ''}" onclick="App.handleNotifClick(${n.id}, ${refTypeStr}, ${refIdVal})">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
                 <div class="notif-title" style="font-weight:600;font-size:13px;color:var(--text-main);">${n.title}</div>
                 ${isUnread ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:var(--primary);flex-shrink:0;margin-top:4px;" title="Unread"></span>' : ''}
@@ -2248,13 +2277,17 @@ const App = {
     }
   },
 
-  async handleNotifClick(notifId, taskId) {
+  async handleNotifClick(notifId, refType, refId) {
     try {
       await API.markNotificationRead(notifId);
       document.getElementById('notif-dropdown')?.classList.remove('show');
       this.loadNotificationCount();
-      if (taskId) {
-        this.openTaskDetails(taskId);
+
+      const numId = parseInt(refId, 10);
+      if (refType === 'TASK' && !isNaN(numId) && numId > 0) {
+        this.openTaskDetails(numId);
+      } else if (refType === 'PROJECT' && !isNaN(numId) && numId > 0) {
+        this.navigate(`project/${numId}`);
       }
     } catch (e) {
       // Ignore
