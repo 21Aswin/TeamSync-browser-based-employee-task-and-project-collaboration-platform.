@@ -274,6 +274,17 @@ async function seed() {
       }
     }
 
+    // 7. Seed Welcome Notifications for all seeded accounts (Admin, Manager, Employees)
+    console.log('[SEED] Seeding welcome notifications for users...');
+    const [allUsers] = await conn.query('SELECT id, name, role_id FROM users');
+    for (const u of allUsers) {
+      await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
+         VALUES (?, 'WELCOME_ALERT', 'Welcome to TeamSync Workspace! 🎉', ?, 'SYSTEM', NULL)`,
+        [u.id, `Hello ${u.name}, welcome to your TeamSync collaboration workspace. You can track projects, manage tasks, and stay synced with your team.`]
+      );
+    }
+
     await conn.commit();
     console.log('[SEED] Seeding completed successfully!');
     console.log('[SEED] Demo Users created with password: Password@123');

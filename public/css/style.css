@@ -111,8 +111,14 @@ a:hover {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
+  transition: margin-left 0.28s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s ease-in-out;
   z-index: 40;
+}
+
+@media (min-width: 901px) {
+  .sidebar.collapsed {
+    margin-left: calc(-1 * var(--sidebar-width));
+  }
 }
 
 .sidebar-header {
@@ -833,6 +839,29 @@ textarea.form-control {
 @keyframes slideIn {
   from { transform: translateY(20px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
+}
+
+/* Hamburger Menu / Sidebar Toggle Button */
+#sidebar-toggle-btn,
+#mobile-toggle {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+#sidebar-toggle-btn:hover,
+#mobile-toggle:hover {
+  background-color: var(--surface-tertiary);
+  color: var(--primary);
+  border-color: var(--border-color);
 }
 
 /* Responsive Media Queries */

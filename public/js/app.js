@@ -60,6 +60,23 @@ const App = {
       }
     });
 
+    // Realtime notification arrived
+    window.addEventListener('notification:new', () => {
+      this.loadNotificationCount();
+    });
+
+    window.addEventListener('realtime:reconnect', () => {
+      this.loadNotificationCount();
+    });
+
+    // Background polling fallback for notifications every 10 seconds
+    if (this.notifPollTimer) clearInterval(this.notifPollTimer);
+    this.notifPollTimer = setInterval(() => {
+      if (this.currentUser) {
+        this.loadNotificationCount();
+      }
+    }, 10000);
+
     // Close notifications popover when clicking anywhere outside
     document.addEventListener('click', (e) => {
       const dropdown = document.getElementById('notif-dropdown');
@@ -135,9 +152,10 @@ const App = {
     if (!appEl) return;
     const u = this.currentUser;
     const initials = u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    const isDesktopCollapsed = localStorage.getItem('teamsync_sidebar_collapsed') === 'true' && window.innerWidth > 900;
 
     appEl.innerHTML = `
-      <aside class="sidebar" id="sidebar">
+      <aside class="sidebar ${isDesktopCollapsed ? 'collapsed' : ''}" id="sidebar">
         <div class="sidebar-header">
           <div class="brand-icon">T</div>
           <span class="brand-title">TeamSync</span>
@@ -192,8 +210,8 @@ const App = {
       <div class="main-wrapper">
         <header class="topbar">
           <div class="topbar-left">
-            <button class="icon-btn" id="mobile-toggle" onclick="App.toggleMobileSidebar()">
-              <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            <button class="icon-btn" id="sidebar-toggle-btn" onclick="App.toggleSidebar()" title="Toggle Sidebar">
+              <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <h1 class="view-title" id="page-title">TeamSync Workspace</h1>
           </div>
@@ -231,15 +249,24 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     MOBILE SIDEBAR HELPERS
+     SIDEBAR HELPERS (Works on Desktop Collapse & Mobile Drawer)
      ------------------------------------------------------------- */
-  toggleMobileSidebar() {
+  toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
-    if (sidebar) {
+    if (!sidebar) return;
+
+    if (window.innerWidth <= 900) {
       const isOpen = sidebar.classList.toggle('open');
       if (backdrop) backdrop.classList.toggle('show', isOpen);
+    } else {
+      const isCollapsed = sidebar.classList.toggle('collapsed');
+      localStorage.setItem('teamsync_sidebar_collapsed', isCollapsed ? 'true' : 'false');
     }
+  },
+
+  toggleMobileSidebar() {
+    this.toggleSidebar();
   },
 
   closeMobileSidebar() {
@@ -1683,7 +1710,15 @@ const App = {
             </div>
             <div class="form-group">
               <label class="form-label">Temporary Password <span class="req">*</span></label>
-              <input type="password" id="new-emp-password" class="form-control" value="Password@123" required>
+              <div style="position:relative;display:flex;align-items:center;">
+                <input type="password" id="new-emp-password" class="form-control" value="Password@123" required style="padding-right:40px;">
+                <button type="button" onclick="App.togglePasswordVisibility('new-emp-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+                  <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div class="form-group">
@@ -2091,6 +2126,32 @@ const App = {
   },
 
   /* -------------------------------------------------------------
+     PASSWORD VISIBILITY TOGGLE HELPER
+     ------------------------------------------------------------- */
+  togglePasswordVisibility(inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+
+    const eyeOpen = `
+      <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+      </svg>
+    `;
+    const eyeSlash = `
+      <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+      </svg>
+    `;
+    if (btnEl) {
+      btnEl.innerHTML = isPassword ? eyeSlash : eyeOpen;
+      btnEl.setAttribute('title', isPassword ? 'Hide Password' : 'Show Password');
+    }
+  },
+
+  /* -------------------------------------------------------------
      NOTIFICATIONS POPOVER
      ------------------------------------------------------------- */
   async loadNotificationCount() {
@@ -2098,8 +2159,9 @@ const App = {
       const res = await API.getNotifications({ limit: 1 });
       const badge = document.getElementById('notif-unread-count');
       if (badge) {
-        if (res.meta && res.meta.unreadCount > 0) {
-          badge.textContent = res.meta.unreadCount > 99 ? '99+' : res.meta.unreadCount;
+        const count = res.meta && typeof res.meta.unreadCount === 'number' ? res.meta.unreadCount : 0;
+        if (count > 0) {
+          badge.textContent = count > 99 ? '99+' : count;
           badge.style.display = 'flex';
         } else {
           badge.textContent = '0';
@@ -2117,33 +2179,31 @@ const App = {
     const isShowing = dropdown.classList.toggle('show');
 
     if (isShowing) {
-      // Clear the notification count badge immediately upon opening
-      const badge = document.getElementById('notif-unread-count');
-      if (badge) {
-        badge.textContent = '0';
-        badge.style.display = 'none';
-      }
-
-      // Mark all notifications as read in backend
-      API.markAllNotificationsRead().catch(() => {});
-
       const container = document.getElementById('notif-list-container');
       try {
-        const res = await API.getNotifications({ limit: 15 });
+        container.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">Loading notifications...</div>`;
+        const res = await API.getNotifications({ limit: 20 });
         const notifs = res.data || [];
 
         if (notifs.length === 0) {
-          container.innerHTML = `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;">No notifications yet.</div>`;
+          container.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:13px;">No notifications yet.</div>`;
           return;
         }
 
-        container.innerHTML = notifs.map(n => `
-          <div class="notif-item" onclick="App.handleNotifClick(${n.id}, ${n.reference_id})">
-            <div class="notif-title">${n.title}</div>
-            <div class="notif-body">${n.body}</div>
-            <div class="notif-time">${new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-          </div>
-        `).join('');
+        container.innerHTML = notifs.map(n => {
+          const isUnread = !n.read_at;
+          const taskId = n.reference_id ? n.reference_id : null;
+          return `
+            <div class="notif-item ${isUnread ? 'unread' : ''}" style="${isUnread ? 'background-color:rgba(14,116,144,0.06);' : ''}" onclick="App.handleNotifClick(${n.id}, ${taskId})">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
+                <div class="notif-title" style="font-weight:600;font-size:13px;color:var(--text-main);">${n.title}</div>
+                ${isUnread ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:var(--primary);flex-shrink:0;margin-top:4px;" title="Unread"></span>' : ''}
+              </div>
+              <div class="notif-body" style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${n.body}</div>
+              <div class="notif-time" style="font-size:11px;color:var(--text-tertiary);margin-top:4px;">${new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+            </div>
+          `;
+        }).join('');
       } catch (e) {
         container.innerHTML = `<div style="padding:16px;color:var(--danger-text);font-size:12px;">Error loading notifications.</div>`;
       }
@@ -2153,7 +2213,7 @@ const App = {
   async handleNotifClick(notifId, taskId) {
     try {
       await API.markNotificationRead(notifId);
-      document.getElementById('notif-dropdown').classList.remove('show');
+      document.getElementById('notif-dropdown')?.classList.remove('show');
       this.loadNotificationCount();
       if (taskId) {
         this.openTaskDetails(taskId);
@@ -2167,9 +2227,22 @@ const App = {
     try {
       await API.markAllNotificationsRead();
       const badge = document.getElementById('notif-unread-count');
-      if (badge) badge.style.display = 'none';
-      document.getElementById('notif-dropdown').classList.remove('show');
+      if (badge) {
+        badge.textContent = '0';
+        badge.style.display = 'none';
+      }
       showToast('All notifications marked as read', 'info');
+      // Refresh notification list inside dropdown
+      const container = document.getElementById('notif-list-container');
+      if (container) {
+        const notifItems = container.querySelectorAll('.notif-item');
+        notifItems.forEach(item => {
+          item.classList.remove('unread');
+          item.style.backgroundColor = '';
+          const dot = item.querySelector('span[title="Unread"]');
+          if (dot) dot.remove();
+        });
+      }
     } catch (e) {
       // Ignore
     }
