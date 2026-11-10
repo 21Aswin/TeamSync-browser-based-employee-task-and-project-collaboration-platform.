@@ -25,6 +25,8 @@ router.get('/health', async (req, res) => {
 // Auth Routes
 router.post('/auth/login', loginRateLimiter, authController.login);
 router.post('/auth/register', loginRateLimiter, authController.register);
+router.post('/auth/forgot-password', loginRateLimiter, authController.forgotPassword);
+router.post('/auth/reset-password', loginRateLimiter, authController.resetPassword);
 router.post('/auth/logout', authenticate, authController.logout);
 router.get('/auth/me', authenticate, authController.getCurrentUser);
 router.patch('/auth/profile', authenticate, authController.updateProfile);

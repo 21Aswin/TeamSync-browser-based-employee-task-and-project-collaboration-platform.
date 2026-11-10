@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
@@ -213,9 +214,81 @@ async function changePassword(userId, { currentPassword, newPassword }) {
   return { message: 'Password updated successfully.' };
 }
 
+async function forgotPassword(email) {
+  if (!email || !email.trim()) {
+    throw { statusCode: 400, code: 'VALIDATION_ERROR', message: 'Email is required.' };
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  const [rows] = await db.query('SELECT id, name, email, status FROM users WHERE email = ?', [cleanEmail]);
+  if (rows.length === 0) {
+    throw { statusCode: 404, code: 'USER_NOT_FOUND', message: 'No account found with this email address.' };
+  }
+  const user = rows[0];
+  if (user.status !== 'ACTIVE') {
+    throw { statusCode: 403, code: 'ACCOUNT_INACTIVE', message: 'This account is deactivated. Please contact your administrator.' };
+  }
+
+  // Generate secure token (48 chars hex)
+  const token = crypto.randomBytes(24).toString('hex');
+
+  // Invalidate any previously unused tokens for this user
+  await db.query('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE user_id = ? AND used_at IS NULL', [user.id]);
+
+  await db.query(
+    'INSERT INTO password_resets (user_id, email, token, expires_at) VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 HOUR))',
+    [user.id, user.email, token]
+  );
+
+  return {
+    message: 'Password reset token generated successfully.',
+    token,
+    email: user.email,
+    name: user.name
+  };
+}
+
+async function resetPassword({ token, newPassword }) {
+  if (!token || !newPassword) {
+    throw { statusCode: 400, code: 'VALIDATION_ERROR', message: 'Token and new password are required.' };
+  }
+  if (newPassword.length < 6) {
+    throw { statusCode: 400, code: 'VALIDATION_ERROR', message: 'New password must be at least 6 characters.' };
+  }
+
+  const [rows] = await db.query(
+    'SELECT id, user_id, email, used_at, IF(expires_at < NOW(), 1, 0) AS is_expired FROM password_resets WHERE token = ?',
+    [token]
+  );
+
+  if (rows.length === 0) {
+    throw { statusCode: 400, code: 'INVALID_TOKEN', message: 'Invalid password reset token.' };
+  }
+
+  const resetRecord = rows[0];
+  if (resetRecord.used_at) {
+    throw { statusCode: 400, code: 'TOKEN_ALREADY_USED', message: 'This password reset token has already been used.' };
+  }
+
+  if (resetRecord.is_expired) {
+    throw { statusCode: 400, code: 'TOKEN_EXPIRED', message: 'Password reset token has expired. Please request a new one.' };
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash(newPassword, salt);
+
+  await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [passwordHash, resetRecord.user_id]);
+  await db.query('UPDATE password_resets SET used_at = CURRENT_TIMESTAMP WHERE id = ?', [resetRecord.id]);
+
+  return {
+    message: 'Password has been reset successfully. You can now sign in with your new password.'
+  };
+}
+
 module.exports = {
   login,
   register,
   updateProfile,
-  changePassword
+  changePassword,
+  forgotPassword,
+  resetPassword
 };

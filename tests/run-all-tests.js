@@ -477,7 +477,63 @@ async function runTests() {
     }, loginRes.body.data.token);
   });
 
-  // 27. Safe Deactivation: Admin deactivates employee and session is blocked
+  // 27. Forgot & Reset Password Flow
+  let resetToken = null;
+  await test('POST /auth/forgot-password with valid email returns reset token', async () => {
+    const res = await req('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'employee@teamsync.internal' })
+    });
+    assert.strictEqual(res.status, 200);
+    assert.ok(res.body.data.token);
+    assert.strictEqual(res.body.data.email, 'employee@teamsync.internal');
+    resetToken = res.body.data.token;
+  });
+
+  await test('POST /auth/forgot-password with non-existent email returns 404', async () => {
+    const res = await req('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'unknown_user_999@teamsync.internal' })
+    });
+    assert.strictEqual(res.status, 404);
+    assert.strictEqual(res.body.error.code, 'USER_NOT_FOUND');
+  });
+
+  await test('POST /auth/reset-password with valid token updates password successfully', async () => {
+    const res = await req('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token: resetToken, newPassword: 'ForgotPassReset@123' })
+    });
+    assert.strictEqual(res.status, 200);
+
+    // Verify employee can log in with new reset password
+    const loginRes = await req('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'employee@teamsync.internal', password: 'ForgotPassReset@123' })
+    });
+    assert.strictEqual(loginRes.status, 200);
+    assert.ok(loginRes.body.data.token);
+
+    // Revert password back to Password@123
+    await req('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'ForgotPassReset@123',
+        newPassword: 'Password@123'
+      })
+    }, loginRes.body.data.token);
+  });
+
+  await test('POST /auth/reset-password with already used token returns 400 TOKEN_ALREADY_USED', async () => {
+    const res = await req('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token: resetToken, newPassword: 'AnotherPassword@123' })
+    });
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.error.code, 'TOKEN_ALREADY_USED');
+  });
+
+  // 28. Safe Deactivation: Admin deactivates employee and session is blocked
   await test('Admin can safely deactivate employee and revoked account cannot sign in', async () => {
     const res = await req(`/users/${newEmployeeId}`, {
       method: 'PATCH',

@@ -76,11 +76,31 @@ async function changePassword(req, res) {
   }
 }
 
+async function forgotPassword(req, res) {
+  try {
+    const result = await authService.forgotPassword(req.body.email);
+    return success(res, result);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'FORGOT_PASSWORD_ERROR');
+  }
+}
+
+async function resetPassword(req, res) {
+  try {
+    const result = await authService.resetPassword(req.body);
+    return success(res, result);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'RESET_PASSWORD_ERROR');
+  }
+}
+
 module.exports = {
   login,
   register,
   logout,
   getCurrentUser,
   updateProfile,
-  changePassword
+  changePassword,
+  forgotPassword,
+  resetPassword
 };

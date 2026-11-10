@@ -118,6 +118,22 @@ const API = {
     return res.data;
   },
 
+  async forgotPassword(email) {
+    const res = await this.request('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email })
+    });
+    return res.data;
+  },
+
+  async resetPassword(token, newPassword) {
+    const res = await this.request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword })
+    });
+    return res.data;
+  },
+
   // Departments
   async getDepartments() {
     const res = await this.request('/departments');
