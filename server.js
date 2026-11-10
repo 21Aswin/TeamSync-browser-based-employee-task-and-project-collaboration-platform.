@@ -17,10 +17,10 @@ async function start() {
     console.log('[TEAMSYNC] MySQL Database connection established successfully.');
     conn.release();
 
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`====================================================`);
       console.log(` TeamSync Platform Server is running!`);
-      console.log(` URL: http://localhost:${PORT}`);
+      console.log(` URL: http://0.0.0.0:${PORT}`);
       console.log(` REST API prefix: http://localhost:${PORT}/api/v1`);
       console.log(` Socket.IO enabled with server-side authorization`);
       console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
