@@ -1,6 +1,7 @@
 /**
  * TeamSync Main Single Page Application Logic
  * Pure Vanilla JavaScript (No React / Vue / external framework)
+ * Follows Google Stitch "Warm Sand Precision" theme tokens
  */
 
 const App = {
@@ -8,6 +9,9 @@ const App = {
   currentRoute: 'dashboard',
   currentProjectId: null,
   currentTaskId: null,
+  projectsPage: 1,
+  employeesPage: 1,
+  kanbanMyTasksOnly: false,
 
   async init() {
     this.bindEvents();
@@ -156,13 +160,13 @@ const App = {
         </nav>
 
         <div class="sidebar-footer">
-          <div class="user-profile-badge">
+          <div class="user-profile-badge" style="cursor:pointer;" onclick="App.openProfileModal()" title="Click to view profile & settings">
             <div class="avatar">${initials}</div>
             <div class="user-meta">
               <div class="name" title="${u.name}">${u.name}</div>
               <span class="role-pill">${u.role_key}</span>
             </div>
-            <button class="icon-btn btn-sm" onclick="API.logout()" title="Logout">
+            <button class="icon-btn btn-sm" onclick="event.stopPropagation(); API.logout();" title="Logout">
               <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
             </button>
           </div>
@@ -439,15 +443,15 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     PROJECTS VIEW
+     PROJECTS VIEW (WITH SEARCH, FILTER & PAGINATION)
      ------------------------------------------------------------- */
   async renderProjects(container) {
     document.getElementById('page-title').textContent = 'Projects';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
         <div style="display:flex;gap:10px;align-items:center;">
           <input type="text" id="project-search-input" class="form-control" style="width:240px;" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
-          <select id="project-status-filter" class="form-control" style="width:160px;" onchange="App.filterProjects()">
+          <select id="project-status-filter" class="form-control" style="width:160px;" onchange="App.projectsPage=1; App.filterProjects()">
             <option value="">All Statuses</option>
             <option value="PLANNING">Planning</option>
             <option value="ACTIVE">Active</option>
@@ -465,6 +469,7 @@ const App = {
       <div id="projects-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:var(--space-md);">
         <div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1;">Loading projects...</div>
       </div>
+      <div id="projects-pagination-container"></div>
     `;
 
     this.filterProjects();
@@ -473,18 +478,23 @@ const App = {
   debounceProjectTimeout: null,
   debounceProjectSearch() {
     clearTimeout(this.debounceProjectTimeout);
-    this.debounceProjectTimeout = setTimeout(() => this.filterProjects(), 300);
+    this.debounceProjectTimeout = setTimeout(() => {
+      this.projectsPage = 1;
+      this.filterProjects();
+    }, 300);
   },
 
   async filterProjects() {
     const grid = document.getElementById('projects-list-grid');
+    const paginationEl = document.getElementById('projects-pagination-container');
     if (!grid) return;
     const search = document.getElementById('project-search-input')?.value || '';
     const status = document.getElementById('project-status-filter')?.value || '';
 
     try {
-      const res = await API.getProjects({ search, status });
-      const projects = res.data;
+      const res = await API.getProjects({ search, status, page: this.projectsPage, limit: 9 });
+      const projects = res.data || [];
+      const meta = res.meta || { total: projects.length, page: 1, totalPages: 1 };
 
       if (!projects || projects.length === 0) {
         grid.innerHTML = `
@@ -493,6 +503,7 @@ const App = {
             <p style="font-size:13px;color:var(--text-muted);">Create a new project or adjust your filters.</p>
           </div>
         `;
+        if (paginationEl) paginationEl.innerHTML = '';
         return;
       }
 
@@ -529,13 +540,30 @@ const App = {
           </div>
         `;
       }).join('');
+
+      // Render Pagination
+      if (paginationEl && meta.totalPages > 1) {
+        paginationEl.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding:12px 16px;background:var(--surface-card);border:1px solid var(--border-color);border-radius:var(--radius-md);">
+            <div style="font-size:12px;color:var(--text-muted);">
+              Showing Page <b>${meta.page}</b> of <b>${meta.totalPages}</b> (Total: ${meta.total} projects)
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-sm" ${meta.page <= 1 ? 'disabled' : ''} onclick="App.projectsPage--; App.filterProjects();">← Previous</button>
+              <button class="btn btn-secondary btn-sm" ${meta.page >= meta.totalPages ? 'disabled' : ''} onclick="App.projectsPage++; App.filterProjects();">Next →</button>
+            </div>
+          </div>
+        `;
+      } else if (paginationEl) {
+        paginationEl.innerHTML = '';
+      }
     } catch (err) {
       grid.innerHTML = `<div style="color:var(--danger-text);padding:20px;">Failed to load projects: ${err.message}</div>`;
     }
   },
 
   /* -------------------------------------------------------------
-     PROJECT DETAILS VIEW
+     PROJECT DETAILS VIEW (WITH EDIT PROJECT)
      ------------------------------------------------------------- */
   async renderProjectDetails(container, projectId) {
     container.innerHTML = `<div style="padding:40px;text-align:center;color:var(--text-muted);">Loading project details...</div>`;
@@ -550,8 +578,10 @@ const App = {
       const tasksRes = await API.getTasks({ projectId });
       const tasks = tasksRes.data;
 
+      const canManage = this.currentUser.role_key === 'ADMIN' || this.currentUser.id === project.manager_id;
+
       container.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
           <div>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
               <span class="badge badge-neutral">${project.project_code}</span>
@@ -565,11 +595,17 @@ const App = {
           </div>
 
           <div style="display:flex;gap:8px;">
+            ${canManage ? `
+              <button class="btn btn-secondary" onclick="App.openEditProjectModal(${project.id})">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                Edit Project
+              </button>
+            ` : ''}
             <button class="btn btn-secondary" onclick="location.hash='#kanban/${projectId}'">
               <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
               View Kanban Board
             </button>
-            ${this.currentUser.role_key !== 'EMPLOYEE' ? `
+            ${canManage ? `
               <button class="btn btn-primary" onclick="App.openCreateTaskModal(${projectId})">
                 <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
                 Add Task
@@ -617,7 +653,7 @@ const App = {
           <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
               <h3 style="font-size:15px;font-weight:600;">Team Members (${project.members.length})</h3>
-              ${this.currentUser.role_key !== 'EMPLOYEE' ? `
+              ${canManage ? `
                 <button class="btn btn-secondary btn-sm" onclick="App.openAddMemberModal(${projectId})">+ Add</button>
               ` : ''}
             </div>
@@ -632,8 +668,8 @@ const App = {
                       <div style="font-size:11px;color:var(--text-muted);">${m.role_name} • ${m.department_name || 'General'}</div>
                     </div>
                   </div>
-                  ${this.currentUser.role_key !== 'EMPLOYEE' && m.id !== project.manager_id ? `
-                    <button class="btn btn-secondary btn-sm" style="color:var(--danger-text);" onclick="App.removeMember(${projectId}, ${m.id})">×</button>
+                  ${canManage && m.id !== project.manager_id ? `
+                    <button class="btn btn-secondary btn-sm" style="color:var(--danger-text);" onclick="App.confirmRemoveMember(${projectId}, ${m.id}, '${m.name}')">×</button>
                   ` : ''}
                 </div>
               `).join('')}
@@ -646,8 +682,95 @@ const App = {
     }
   },
 
+  confirmRemoveMember(projectId, userId, userName) {
+    this.confirmDialog({
+      title: 'Remove Team Member',
+      message: `Are you sure you want to remove <b>${userName}</b> from this project?`,
+      confirmText: 'Remove Member',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          await API.removeProjectMember(projectId, userId);
+          showToast('Member removed from project.', 'info');
+          this.refreshCurrentView();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      }
+    });
+  },
+
   /* -------------------------------------------------------------
-     KANBAN BOARD VIEW
+     EDIT PROJECT MODAL
+     ------------------------------------------------------------- */
+  async openEditProjectModal(projectId) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    try {
+      const project = await API.getProject(projectId);
+      modal.innerHTML = `
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3>Edit Project: ${project.project_code}</h3>
+            <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+          </div>
+          <form onsubmit="App.handleUpdateProject(event, ${project.id})">
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Project Name <span class="req">*</span></label>
+                <input type="text" id="edit-proj-name" class="form-control" value="${project.name}" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="edit-proj-desc" class="form-control">${project.description || ''}</textarea>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Status</label>
+                  <select id="edit-proj-status" class="form-control">
+                    <option value="PLANNING" ${project.status === 'PLANNING' ? 'selected' : ''}>Planning</option>
+                    <option value="ACTIVE" ${project.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
+                    <option value="ON_HOLD" ${project.status === 'ON_HOLD' ? 'selected' : ''}>On Hold</option>
+                    <option value="COMPLETED" ${project.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Due Date</label>
+                  <input type="date" id="edit-proj-due" class="form-control" value="${project.due_date || ''}">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  },
+
+  async handleUpdateProject(e, projectId) {
+    e.preventDefault();
+    const name = document.getElementById('edit-proj-name').value;
+    const description = document.getElementById('edit-proj-desc').value;
+    const status = document.getElementById('edit-proj-status').value;
+    const due_date = document.getElementById('edit-proj-due').value || null;
+
+    try {
+      await API.updateProject(projectId, { name, description, status, due_date });
+      this.closeModal();
+      showToast('Project updated successfully!', 'success');
+      this.refreshCurrentView();
+    } catch (err) {
+      showToast(err.message || 'Update failed', 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
+     KANBAN BOARD VIEW (WITH MY TASKS TOGGLE)
      ------------------------------------------------------------- */
   async renderKanban(container, projectIdFilter = null) {
     document.getElementById('page-title').textContent = 'Task Kanban Board';
@@ -659,13 +782,20 @@ const App = {
 
     container.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;gap:10px;align-items:center;">
-          <label style="font-size:13px;font-weight:600;">Project:</label>
-          <select id="kanban-project-select" class="form-control" style="width:260px;" onchange="App.navigate('kanban/' + this.value)">
-            ${projects.map(p => `
-              <option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''}>${p.project_code} - ${p.name}</option>
-            `).join('')}
-          </select>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
+          <div style="display:flex;gap:6px;align-items:center;">
+            <label style="font-size:13px;font-weight:600;">Project:</label>
+            <select id="kanban-project-select" class="form-control" style="width:240px;" onchange="App.navigate('kanban/' + this.value)">
+              ${projects.map(p => `
+                <option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''}>${p.project_code} - ${p.name}</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;background:var(--surface-secondary);padding:6px 10px;border-radius:var(--radius-md);border:1px solid var(--border-color);">
+            <input type="checkbox" id="kanban-my-tasks-only" ${this.kanbanMyTasksOnly ? 'checked' : ''} onchange="App.toggleKanbanMyTasks()">
+            <span>Assigned to me only</span>
+          </label>
         </div>
 
         <div style="display:flex;gap:10px;">
@@ -689,12 +819,24 @@ const App = {
     }
   },
 
+  toggleKanbanMyTasks() {
+    this.kanbanMyTasksOnly = document.getElementById('kanban-my-tasks-only').checked;
+    const sel = document.getElementById('kanban-project-select');
+    if (sel && sel.value) {
+      this.loadKanbanTasks(sel.value);
+    }
+  },
+
   async loadKanbanTasks(projectId) {
     const wrapper = document.getElementById('kanban-columns-wrapper');
     if (!wrapper) return;
 
     try {
-      const res = await API.getTasks({ projectId });
+      const params = { projectId };
+      if (this.kanbanMyTasksOnly) {
+        params.assignedToMe = true;
+      }
+      const res = await API.getTasks(params);
       const tasks = res.data || [];
 
       const columns = [
@@ -820,7 +962,7 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     TASK DETAILS MODAL (WITH COMMENTS & AUDIT HISTORY)
+     TASK DETAILS MODAL (WITH EDIT TASK OPTION)
      ------------------------------------------------------------- */
   async openTaskDetails(taskId) {
     this.currentTaskId = taskId;
@@ -831,16 +973,22 @@ const App = {
     try {
       const task = await API.getTask(taskId);
       const u = this.currentUser;
+      const canManage = u.role_key === 'ADMIN' || u.id === task.manager_id;
 
-      // Status transition options based on role
       const statuses = ['TODO', 'IN_PROGRESS', 'UNDER_REVIEW', 'COMPLETED', 'BLOCKED'];
 
       modal.innerHTML = `
         <div class="modal-dialog" style="max-width:680px;">
           <div class="modal-header">
-            <div>
+            <div style="display:flex;align-items:center;gap:8px;">
               <span class="badge badge-neutral">${task.project_code}</span>
-              <span class="badge priority-${task.priority}" style="margin-left:6px;">${task.priority}</span>
+              <span class="badge priority-${task.priority}">${task.priority}</span>
+              ${canManage ? `
+                <button class="btn btn-secondary btn-sm" onclick="App.openEditTaskModal(${task.id})">
+                  <svg style="width:13px;height:13px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                  Edit Task
+                </button>
+              ` : ''}
             </div>
             <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
           </div>
@@ -946,6 +1094,95 @@ const App = {
       this.openTaskDetails(taskId);
     } catch (err) {
       showToast(err.message, 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
+     EDIT TASK MODAL
+     ------------------------------------------------------------- */
+  async openEditTaskModal(taskId) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    try {
+      const task = await API.getTask(taskId);
+      const proj = await API.getProject(task.project_id);
+      const members = proj.members || [];
+
+      modal.innerHTML = `
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3>Edit Task Details</h3>
+            <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+          </div>
+          <form onsubmit="App.handleUpdateTask(event, ${task.id})">
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Task Title <span class="req">*</span></label>
+                <input type="text" id="edit-task-title" class="form-control" value="${task.title}" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea id="edit-task-desc" class="form-control">${task.description || ''}</textarea>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Priority</label>
+                  <select id="edit-task-priority" class="form-control">
+                    <option value="LOW" ${task.priority === 'LOW' ? 'selected' : ''}>Low</option>
+                    <option value="MEDIUM" ${task.priority === 'MEDIUM' ? 'selected' : ''}>Medium</option>
+                    <option value="HIGH" ${task.priority === 'HIGH' ? 'selected' : ''}>High</option>
+                    <option value="URGENT" ${task.priority === 'URGENT' ? 'selected' : ''}>Urgent</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Assignee</label>
+                  <select id="edit-task-assignee" class="form-control">
+                    <option value="">Unassigned</option>
+                    ${members.map(m => `
+                      <option value="${m.id}" ${m.id === task.assignee_id ? 'selected' : ''}>${m.name} (${m.role_name})</option>
+                    `).join('')}
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Start Date</label>
+                  <input type="date" id="edit-task-start" class="form-control" value="${task.start_date || ''}">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Due Date</label>
+                  <input type="date" id="edit-task-due" class="form-control" value="${task.due_date || ''}">
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Task Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  },
+
+  async handleUpdateTask(e, taskId) {
+    e.preventDefault();
+    const title = document.getElementById('edit-task-title').value;
+    const description = document.getElementById('edit-task-desc').value;
+    const priority = document.getElementById('edit-task-priority').value;
+    const assigneeId = document.getElementById('edit-task-assignee').value || null;
+    const startDate = document.getElementById('edit-task-start').value || null;
+    const dueDate = document.getElementById('edit-task-due').value || null;
+
+    try {
+      await API.updateTask(taskId, { title, description, priority, assigneeId, startDate, dueDate });
+      this.closeModal();
+      showToast('Task updated successfully!', 'success');
+      this.refreshCurrentView();
+    } catch (err) {
+      showToast(err.message || 'Task update failed', 'error');
     }
   },
 
@@ -1148,13 +1385,13 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     EMPLOYEES MANAGEMENT VIEW (ADMIN)
+     EMPLOYEES MANAGEMENT VIEW (ADMIN - WITH EDIT & PAGINATION)
      ------------------------------------------------------------- */
   async renderEmployees(container) {
     document.getElementById('page-title').textContent = 'Employee Management';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <input type="text" id="emp-search" class="form-control" style="width:260px;" placeholder="Search employees..." oninput="App.loadEmployees()">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+        <input type="text" id="emp-search" class="form-control" style="width:260px;" placeholder="Search employees..." oninput="App.employeesPage=1; App.loadEmployees()">
         <button class="btn btn-primary" onclick="App.openCreateEmployeeModal()">
           <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
           Add Employee
@@ -1179,6 +1416,8 @@ const App = {
           </tbody>
         </table>
       </div>
+
+      <div id="employees-pagination-container"></div>
     `;
 
     this.loadEmployees();
@@ -1186,12 +1425,20 @@ const App = {
 
   async loadEmployees() {
     const tbody = document.getElementById('employees-tbody');
+    const paginationEl = document.getElementById('employees-pagination-container');
     if (!tbody) return;
     const search = document.getElementById('emp-search')?.value || '';
 
     try {
-      const res = await API.getUsers({ search });
+      const res = await API.getUsers({ search, page: this.employeesPage, limit: 10 });
       const users = res.data || [];
+      const meta = res.meta || { total: users.length, page: 1, totalPages: 1 };
+
+      if (users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);">No employees found.</td></tr>`;
+        if (paginationEl) paginationEl.innerHTML = '';
+        return;
+      }
 
       tbody.innerHTML = users.map(u => `
         <tr>
@@ -1206,28 +1453,53 @@ const App = {
             </span>
           </td>
           <td>
-            <button class="btn btn-secondary btn-sm" onclick="App.toggleUserStatus(${u.id}, '${u.status}')">
-              ${u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
-            </button>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-secondary btn-sm" onclick="App.openEditEmployeeModal(${u.id})">Edit</button>
+              <button class="btn ${u.status === 'ACTIVE' ? 'btn-danger' : 'btn-secondary'} btn-sm" onclick="App.toggleUserStatus(${u.id}, '${u.status}', '${u.name}')">
+                ${u.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+              </button>
+            </div>
           </td>
         </tr>
       `).join('');
+
+      if (paginationEl && meta.totalPages > 1) {
+        paginationEl.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding:12px 16px;background:var(--surface-card);border:1px solid var(--border-color);border-radius:var(--radius-md);">
+            <div style="font-size:12px;color:var(--text-muted);">
+              Page <b>${meta.page}</b> of <b>${meta.totalPages}</b> (Total: ${meta.total} employees)
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary btn-sm" ${meta.page <= 1 ? 'disabled' : ''} onclick="App.employeesPage--; App.loadEmployees();">← Previous</button>
+              <button class="btn btn-secondary btn-sm" ${meta.page >= meta.totalPages ? 'disabled' : ''} onclick="App.employeesPage++; App.loadEmployees();">Next →</button>
+            </div>
+          </div>
+        `;
+      } else if (paginationEl) {
+        paginationEl.innerHTML = '';
+      }
     } catch (err) {
       tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger-text);padding:20px;">Error: ${err.message}</td></tr>`;
     }
   },
 
-  async toggleUserStatus(userId, currentStatus) {
+  async toggleUserStatus(userId, currentStatus, userName) {
     const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    if (!confirm(`Are you sure you want to change this employee status to ${newStatus}?`)) return;
-
-    try {
-      await API.updateUser(userId, { status: newStatus });
-      showToast(`User status updated to ${newStatus}`, 'success');
-      this.loadEmployees();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+    this.confirmDialog({
+      title: `${newStatus === 'INACTIVE' ? 'Deactivate' : 'Activate'} Employee`,
+      message: `Are you sure you want to change <b>${userName}</b> status to <b>${newStatus}</b>? ${newStatus === 'INACTIVE' ? 'This user will be blocked from logging in.' : ''}`,
+      confirmText: `${newStatus === 'INACTIVE' ? 'Deactivate Account' : 'Activate Account'}`,
+      danger: newStatus === 'INACTIVE',
+      onConfirm: async () => {
+        try {
+          await API.updateUser(userId, { status: newStatus });
+          showToast(`User status updated to ${newStatus}`, 'success');
+          this.loadEmployees();
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }
+    });
   },
 
   async openCreateEmployeeModal() {
@@ -1307,13 +1579,94 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     DEPARTMENTS VIEW (ADMIN)
+     EDIT EMPLOYEE MODAL (ADMIN)
+     ------------------------------------------------------------- */
+  async openEditEmployeeModal(userId) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    try {
+      const user = await API.getUser(userId);
+      const depts = await API.getDepartments();
+
+      modal.innerHTML = `
+        <div class="modal-dialog">
+          <div class="modal-header">
+            <h3>Edit Employee: ${user.name}</h3>
+            <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+          </div>
+          <form onsubmit="App.handleUpdateEmployee(event, ${user.id})">
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Full Name <span class="req">*</span></label>
+                <input type="text" id="edit-emp-name" class="form-control" value="${user.name}" required>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div class="form-group">
+                  <label class="form-label">Role <span class="req">*</span></label>
+                  <select id="edit-emp-role" class="form-control" required>
+                    <option value="3" ${user.role_id === 3 ? 'selected' : ''}>Employee</option>
+                    <option value="2" ${user.role_id === 2 ? 'selected' : ''}>Project Manager</option>
+                    <option value="1" ${user.role_id === 1 ? 'selected' : ''}>Administrator</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Department</label>
+                  <select id="edit-emp-dept" class="form-control">
+                    <option value="">None</option>
+                    ${depts.map(d => `<option value="${d.id}" ${d.id === user.department_id ? 'selected' : ''}>${d.name}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Job Title</label>
+                <input type="text" id="edit-emp-title" class="form-control" value="${user.job_title || ''}">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Account Status</label>
+                <select id="edit-emp-status" class="form-control">
+                  <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
+                  <option value="INACTIVE" ${user.status === 'INACTIVE' ? 'selected' : ''}>Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+              <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+          </form>
+        </div>
+      `;
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  },
+
+  async handleUpdateEmployee(e, userId) {
+    e.preventDefault();
+    const name = document.getElementById('edit-emp-name').value;
+    const role_id = parseInt(document.getElementById('edit-emp-role').value, 10);
+    const department_id = document.getElementById('edit-emp-dept').value || null;
+    const job_title = document.getElementById('edit-emp-title').value || null;
+    const status = document.getElementById('edit-emp-status').value;
+
+    try {
+      await API.updateUser(userId, { name, role_id, department_id, job_title, status });
+      this.closeModal();
+      showToast('Employee updated successfully!', 'success');
+      this.loadEmployees();
+    } catch (err) {
+      showToast(err.message || 'Update failed', 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
+     DEPARTMENTS VIEW (ADMIN - WITH EDIT)
      ------------------------------------------------------------- */
   async renderDepartments(container) {
     document.getElementById('page-title').textContent = 'Department Management';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <span style="font-size:13px;color:var(--text-muted);">Manage organizational units</span>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+        <span style="font-size:13px;color:var(--text-muted);">Manage organizational units & team clusters</span>
         <button class="btn btn-primary" onclick="App.openCreateDepartmentModal()">
           <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
           Add Department
@@ -1328,10 +1681,11 @@ const App = {
               <th>Name</th>
               <th>Active Employees</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="depts-tbody">
-            <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--text-muted);">Loading departments...</td></tr>
+            <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Loading departments...</td></tr>
           </tbody>
         </table>
       </div>
@@ -1351,10 +1705,13 @@ const App = {
           <td style="font-weight:600;">${d.name}</td>
           <td>${d.employee_count}</td>
           <td><span class="badge badge-success">${d.status}</span></td>
+          <td>
+            <button class="btn btn-secondary btn-sm" onclick="App.openEditDepartmentModal(${d.id}, '${d.name}', '${d.code}')">Edit</button>
+          </td>
         </tr>
       `).join('');
     } catch (err) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--danger-text);padding:20px;">Error: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--danger-text);padding:20px;">Error: ${err.message}</td></tr>`;
     }
   },
 
@@ -1400,6 +1757,167 @@ const App = {
     } catch (err) {
       showToast(err.message, 'error');
     }
+  },
+
+  /* -------------------------------------------------------------
+     EDIT DEPARTMENT MODAL (ADMIN)
+     ------------------------------------------------------------- */
+  openEditDepartmentModal(deptId, currentName, currentCode) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    modal.innerHTML = `
+      <div class="modal-dialog">
+        <div class="modal-header">
+          <h3>Edit Department: ${currentCode}</h3>
+          <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+        </div>
+        <form onsubmit="App.handleUpdateDepartment(event, ${deptId})">
+          <div class="modal-body">
+            <div class="form-group">
+              <label class="form-label">Department Name <span class="req">*</span></label>
+              <input type="text" id="edit-dept-name" class="form-control" value="${currentName}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Department Code <span class="req">*</span></label>
+              <input type="text" id="edit-dept-code" class="form-control" value="${currentCode}" style="text-transform:uppercase;" required>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    `;
+  },
+
+  async handleUpdateDepartment(e, deptId) {
+    e.preventDefault();
+    const name = document.getElementById('edit-dept-name').value;
+    const code = document.getElementById('edit-dept-code').value;
+    try {
+      await API.updateDepartment(deptId, { name, code });
+      this.closeModal();
+      showToast('Department updated successfully!', 'success');
+      this.loadDepartments();
+    } catch (err) {
+      showToast(err.message || 'Department update failed', 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
+     USER PROFILE MODAL & PASSWORD UPDATE
+     ------------------------------------------------------------- */
+  openProfileModal() {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    const u = this.currentUser;
+
+    modal.innerHTML = `
+      <div class="modal-dialog" style="max-width:480px;">
+        <div class="modal-header">
+          <h3>My Profile & Settings</h3>
+          <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:12px;background:var(--surface-secondary);border-radius:var(--radius-md);border:1px solid var(--border-color);">
+            <div class="avatar" style="width:48px;height:48px;font-size:18px;">${u.name.split(' ').map(n=>n[0]).join('').substring(0,2)}</div>
+            <div>
+              <h4 style="font-size:15px;font-weight:700;">${u.name}</h4>
+              <div style="font-size:12px;color:var(--text-muted);">${u.email}</div>
+              <div style="margin-top:4px;">
+                <span class="badge badge-neutral">${u.role_name}</span>
+                ${u.department_name ? `<span class="badge badge-neutral" style="margin-left:4px;">${u.department_name}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <form onsubmit="App.handleUpdateProfile(event)" style="margin-bottom:20px;">
+            <div class="form-group">
+              <label class="form-label">Full Name</label>
+              <input type="text" id="prof-name" class="form-control" value="${u.name}" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Job Title</label>
+              <input type="text" id="prof-title" class="form-control" value="${u.job_title || ''}" placeholder="e.g. Lead Software Engineer">
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Update Profile Info</button>
+          </form>
+
+          <hr style="border:none;border-top:1px solid var(--border-color);margin:16px 0;">
+
+          <h4 style="font-size:13px;font-weight:700;margin-bottom:12px;">Change Password</h4>
+          <form onsubmit="App.handleChangePassword(event)">
+            <div class="form-group">
+              <label class="form-label">Current Password</label>
+              <input type="password" id="prof-cur-pass" class="form-control" placeholder="••••••••••••" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">New Password (min 6 characters)</label>
+              <input type="password" id="prof-new-pass" class="form-control" placeholder="New secure password" minlength="6" required>
+            </div>
+            <button type="submit" class="btn btn-secondary btn-sm">Change Password</button>
+          </form>
+        </div>
+      </div>
+    `;
+  },
+
+  async handleUpdateProfile(e) {
+    e.preventDefault();
+    const name = document.getElementById('prof-name').value;
+    const job_title = document.getElementById('prof-title').value;
+    try {
+      const updated = await API.updateProfile({ name, job_title });
+      this.currentUser = updated;
+      this.renderShell();
+      this.refreshCurrentView();
+      this.closeModal();
+      showToast('Profile updated successfully!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Profile update failed', 'error');
+    }
+  },
+
+  async handleChangePassword(e) {
+    e.preventDefault();
+    const currentPassword = document.getElementById('prof-cur-pass').value;
+    const newPassword = document.getElementById('prof-new-pass').value;
+    try {
+      await API.changePassword({ currentPassword, newPassword });
+      this.closeModal();
+      showToast('Password changed successfully!', 'success');
+    } catch (err) {
+      showToast(err.message || 'Password change failed', 'error');
+    }
+  },
+
+  /* -------------------------------------------------------------
+     CUSTOM STITCH CONFIRMATION DIALOG
+     ------------------------------------------------------------- */
+  confirmDialog({ title, message, confirmText = 'Confirm', danger = false, onConfirm }) {
+    const modal = document.getElementById('modal-container');
+    modal.classList.add('show');
+    modal.innerHTML = `
+      <div class="modal-dialog" style="max-width:440px;">
+        <div class="modal-header">
+          <h3 style="color:${danger ? 'var(--danger-text)' : 'var(--text-main)'};">${title}</h3>
+          <button class="icon-btn btn-sm" onclick="App.closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="font-size:13px;color:var(--text-main);line-height:1.4;">${message}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="App.closeModal()">Cancel</button>
+          <button type="button" class="btn ${danger ? 'btn-danger' : 'btn-primary'}" id="stitch-confirm-btn">${confirmText}</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('stitch-confirm-btn').onclick = async () => {
+      App.closeModal();
+      if (onConfirm) await onConfirm();
+    };
   },
 
   /* -------------------------------------------------------------

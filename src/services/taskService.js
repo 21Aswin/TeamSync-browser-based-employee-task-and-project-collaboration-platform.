@@ -512,10 +512,125 @@ async function addComment(user, taskId, body) {
   }
 }
 
+async function updateTask(user, taskId, { title, description, priority, assigneeId, startDate, dueDate }) {
+  const task = await getTaskById(user, taskId);
+
+  // Permission: Admin or Project Manager
+  if (user.role_key !== 'ADMIN' && task.manager_id !== user.id) {
+    throw { statusCode: 403, code: 'FORBIDDEN', message: 'Only project managers or administrators can edit this task.' };
+  }
+
+  // Validate dates
+  const newStart = startDate !== undefined ? startDate : task.start_date;
+  const newDue = dueDate !== undefined ? dueDate : task.due_date;
+  if (newStart && newDue && new Date(newDue) < new Date(newStart)) {
+    throw {
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      message: 'Due date cannot precede start date.',
+      details: [{ field: 'dueDate', message: 'Due date cannot precede start date.' }]
+    };
+  }
+
+  const updates = [];
+  const params = [];
+
+  if (title !== undefined && title.trim()) {
+    updates.push('title = ?');
+    params.push(title.trim());
+  }
+
+  if (description !== undefined) {
+    updates.push('description = ?');
+    params.push(description);
+  }
+
+  if (priority !== undefined) {
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+    if (validPriorities.includes(String(priority).toUpperCase())) {
+      updates.push('priority = ?');
+      params.push(String(priority).toUpperCase());
+    }
+  }
+
+  if (startDate !== undefined) {
+    updates.push('start_date = ?');
+    params.push(startDate || null);
+  }
+
+  if (dueDate !== undefined) {
+    updates.push('due_date = ?');
+    params.push(dueDate || null);
+  }
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    if (updates.length > 0) {
+      params.push(taskId);
+      await conn.query(`UPDATE tasks SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+
+    // Reassign if requested
+    if (assigneeId !== undefined) {
+      await conn.query('DELETE FROM task_assignees WHERE task_id = ?', [taskId]);
+      if (assigneeId) {
+        const [mRows] = await conn.query(
+          `SELECT pm.user_id FROM project_members pm
+           JOIN users u ON pm.user_id = u.id
+           WHERE pm.project_id = ? AND pm.user_id = ? AND u.status = 'ACTIVE'`,
+          [task.project_id, assigneeId]
+        );
+        if (mRows.length === 0) {
+          throw { statusCode: 400, code: 'INVALID_ASSIGNEE', message: 'Selected assignee is not an active member of this project.' };
+        }
+        await conn.query('INSERT INTO task_assignees (task_id, user_id, assigned_by) VALUES (?, ?, ?)', [taskId, assigneeId, user.id]);
+
+        if (parseInt(assigneeId, 10) !== user.id) {
+          await conn.query(
+            `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
+             VALUES (?, 'TASK_ASSIGNED', 'Task assigned to you', ?, 'TASK', ?)`,
+            [assigneeId, `You were assigned to task "${task.title}"`, taskId]
+          );
+        }
+      }
+    }
+
+    await conn.query(
+      `INSERT INTO task_history (task_id, actor_id, action, old_value, new_value)
+       VALUES (?, ?, 'TASK_UPDATED', NULL, 'Task details updated')`,
+      [taskId, user.id]
+    );
+
+    await conn.commit();
+
+    const updatedTask = await getTaskById(user, taskId);
+
+    if (ioEmitter) {
+      ioEmitter.emitToProject(task.project_id, 'task:status_changed', {
+        taskId,
+        projectId: task.project_id,
+        oldStatus: task.status,
+        newStatus: task.status,
+        task: updatedTask
+      });
+    }
+
+    return updatedTask;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 module.exports = {
   listTasks,
   getTaskById,
   createTask,
+  updateTask,
   updateTaskStatus,
   addComment,
   setRealtimeEmitter

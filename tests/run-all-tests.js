@@ -410,7 +410,74 @@ async function runTests() {
     assert.ok(res.body.data.metrics.totalAssignedTasks >= 1);
   });
 
-  // 24. Safe Deactivation: Admin deactivates employee and session is blocked
+  // 24. Edit Task: Manager edits task details
+  await test('Manager can update task title, description, and priority', async () => {
+    const res = await req(`/tasks/${createdTaskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        title: 'Updated Automated Task Title',
+        description: 'Updated task description by manager',
+        priority: 'URGENT'
+      })
+    }, managerToken);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.data.title, 'Updated Automated Task Title');
+    assert.strictEqual(res.body.data.priority, 'URGENT');
+  });
+
+  // 25. Edit Department: Admin edits department details
+  await test('Admin can update department name', async () => {
+    const res = await req('/departments/1', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Engineering and Product'
+      })
+    }, adminToken);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.data.name, 'Engineering and Product');
+  });
+
+  // 26. Profile & Password: User updates own profile and changes password
+  await test('User can update own profile name', async () => {
+    const res = await req('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Lead Project Manager Updated'
+      })
+    }, managerToken);
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.body.data.name, 'Lead Project Manager Updated');
+  });
+
+  await test('User can change password and log in with new password', async () => {
+    const res = await req('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'Password@123',
+        newPassword: 'NewPassword@2026'
+      })
+    }, managerToken);
+    assert.strictEqual(res.status, 200);
+
+    // Verify login with new password
+    const loginRes = await req('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: 'manager@teamsync.internal', password: 'NewPassword@2026' })
+    });
+    assert.strictEqual(loginRes.status, 200);
+    assert.ok(loginRes.body.data.token);
+
+    // Revert password back so future test runs don't break
+    await req('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        currentPassword: 'NewPassword@2026',
+        newPassword: 'Password@123'
+      })
+    }, loginRes.body.data.token);
+  });
+
+  // 27. Safe Deactivation: Admin deactivates employee and session is blocked
   await test('Admin can safely deactivate employee and revoked account cannot sign in', async () => {
     const res = await req(`/users/${newEmployeeId}`, {
       method: 'PATCH',

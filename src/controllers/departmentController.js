@@ -20,7 +20,17 @@ async function createDepartment(req, res) {
   }
 }
 
+async function updateDepartment(req, res) {
+  try {
+    const department = await departmentService.updateDepartment(req.params.id, req.body);
+    return success(res, department, 200);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'VALIDATION_ERROR');
+  }
+}
+
 module.exports = {
   listDepartments,
-  createDepartment
+  createDepartment,
+  updateDepartment
 };

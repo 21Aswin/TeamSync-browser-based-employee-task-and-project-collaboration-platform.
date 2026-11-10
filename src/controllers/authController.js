@@ -58,9 +58,29 @@ async function getCurrentUser(req, res) {
   return success(res, req.user, 200);
 }
 
+async function updateProfile(req, res) {
+  try {
+    const user = await authService.updateProfile(req.user.id, req.body);
+    return success(res, user);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'PROFILE_ERROR');
+  }
+}
+
+async function changePassword(req, res) {
+  try {
+    const result = await authService.changePassword(req.user.id, req.body);
+    return success(res, result);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'PASSWORD_ERROR');
+  }
+}
+
 module.exports = {
   login,
   register,
   logout,
-  getCurrentUser
+  getCurrentUser,
+  updateProfile,
+  changePassword
 };

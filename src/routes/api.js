@@ -27,10 +27,13 @@ router.post('/auth/login', loginRateLimiter, authController.login);
 router.post('/auth/register', loginRateLimiter, authController.register);
 router.post('/auth/logout', authenticate, authController.logout);
 router.get('/auth/me', authenticate, authController.getCurrentUser);
+router.patch('/auth/profile', authenticate, authController.updateProfile);
+router.patch('/auth/change-password', authenticate, authController.changePassword);
 
 // Department Routes
 router.get('/departments', authenticate, departmentController.listDepartments);
 router.post('/departments', authenticate, requireRole('ADMIN'), departmentController.createDepartment);
+router.patch('/departments/:id', authenticate, requireRole('ADMIN'), departmentController.updateDepartment);
 
 // User Routes
 router.get('/users', authenticate, userController.listUsers);
@@ -50,6 +53,7 @@ router.delete('/projects/:id/members/:userId', authenticate, requireRole('ADMIN'
 router.get('/tasks', authenticate, taskController.listTasks);
 router.post('/projects/:id/tasks', authenticate, requireRole('ADMIN', 'MANAGER'), taskController.createTask);
 router.get('/tasks/:id', authenticate, taskController.getTask);
+router.patch('/tasks/:id', authenticate, requireRole('ADMIN', 'MANAGER'), taskController.updateTask);
 router.patch('/tasks/:id/status', authenticate, taskController.updateTaskStatus);
 router.post('/tasks/:id/comments', authenticate, taskController.addComment);
 

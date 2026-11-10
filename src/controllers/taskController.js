@@ -41,6 +41,15 @@ async function createTask(req, res) {
   }
 }
 
+async function updateTask(req, res) {
+  try {
+    const task = await taskService.updateTask(req.user, req.params.id, req.body);
+    return success(res, task);
+  } catch (err) {
+    return error(res, err.message, err.statusCode || 400, err.code || 'UPDATE_ERROR', err.details);
+  }
+}
+
 async function updateTaskStatus(req, res) {
   try {
     const task = await taskService.updateTaskStatus(req.user, req.params.id, req.body);
@@ -63,6 +72,7 @@ module.exports = {
   listTasks,
   getTask,
   createTask,
+  updateTask,
   updateTaskStatus,
   addComment
 };

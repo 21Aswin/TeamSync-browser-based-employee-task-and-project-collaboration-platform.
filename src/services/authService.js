@@ -159,7 +159,63 @@ async function register({ name, email, password, role_id, department_id, job_tit
   };
 }
 
+async function updateProfile(userId, { name, full_name, job_title }) {
+  const updates = [];
+  const params = [];
+  const resolvedName = name || full_name;
+  if (resolvedName && resolvedName.trim()) {
+    updates.push('name = ?');
+    params.push(resolvedName.trim());
+  }
+  if (job_title !== undefined) {
+    updates.push('job_title = ?');
+    params.push(job_title ? job_title.trim() : null);
+  }
+  if (updates.length > 0) {
+    params.push(userId);
+    await db.query(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, params);
+  }
+
+  const [rows] = await db.query(
+    `SELECT u.id, u.name, u.email, u.status, u.role_id, r.role_key, r.role_name,
+            u.department_id, d.name AS department_name, d.code AS department_code, u.job_title
+     FROM users u
+     JOIN roles r ON u.role_id = r.id
+     LEFT JOIN departments d ON u.department_id = d.id
+     WHERE u.id = ?`,
+    [userId]
+  );
+  return rows[0];
+}
+
+async function changePassword(userId, { currentPassword, newPassword }) {
+  if (!currentPassword || !newPassword) {
+    throw { statusCode: 400, code: 'VALIDATION_ERROR', message: 'Current password and new password are required.' };
+  }
+  if (newPassword.length < 6) {
+    throw { statusCode: 400, code: 'VALIDATION_ERROR', message: 'New password must be at least 6 characters.' };
+  }
+
+  const [rows] = await db.query('SELECT password_hash FROM users WHERE id = ?', [userId]);
+  if (rows.length === 0) {
+    throw { statusCode: 404, code: 'USER_NOT_FOUND', message: 'User not found.' };
+  }
+
+  const match = await bcrypt.compare(currentPassword, rows[0].password_hash);
+  if (!match) {
+    throw { statusCode: 400, code: 'INVALID_PASSWORD', message: 'Current password is incorrect.' };
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const newHash = await bcrypt.hash(newPassword, salt);
+  await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, userId]);
+
+  return { message: 'Password updated successfully.' };
+}
+
 module.exports = {
   login,
-  register
+  register,
+  updateProfile,
+  changePassword
 };

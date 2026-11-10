@@ -101,6 +101,23 @@ const API = {
     return res.data;
   },
 
+  async updateProfile(data) {
+    const res = await this.request('/auth/profile', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+    this.setUser(res.data);
+    return res.data;
+  },
+
+  async changePassword(data) {
+    const res = await this.request('/auth/change-password', {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+    return res.data;
+  },
+
   // Departments
   async getDepartments() {
     const res = await this.request('/departments');
@@ -110,6 +127,14 @@ const API = {
   async createDepartment(data) {
     const res = await this.request('/departments', {
       method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return res.data;
+  },
+
+  async updateDepartment(id, data) {
+    const res = await this.request(`/departments/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data)
     });
     return res.data;
@@ -205,6 +230,14 @@ const API = {
     const res = await this.request(`/tasks/${taskId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status })
+    });
+    return res.data;
+  },
+
+  async updateTask(taskId, data) {
+    const res = await this.request(`/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
     });
     return res.data;
   },
