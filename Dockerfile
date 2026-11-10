@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# Install curl and embedded MariaDB/MySQL
-RUN apk add --no-cache curl mariadb mariadb-client
+# Install curl, php, and embedded MariaDB/MySQL
+RUN apk add --no-cache curl mariadb mariadb-client php php-cli
 
 # Set working directory
 WORKDIR /app
