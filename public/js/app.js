@@ -59,6 +59,15 @@ const App = {
         this.openTaskDetails(this.currentTaskId);
       }
     });
+
+    // Close notifications popover when clicking anywhere outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('notif-dropdown');
+      const wrapper = document.querySelector('.notif-btn-wrapper');
+      if (dropdown && dropdown.classList.contains('show') && wrapper && !wrapper.contains(e.target)) {
+        dropdown.classList.remove('show');
+      }
+    });
   },
 
   navigate(rawRoute) {
@@ -66,6 +75,9 @@ const App = {
       this.renderLogin();
       return;
     }
+
+    // Auto-close mobile sidebar when user navigates to any page
+    this.closeMobileSidebar();
 
     const [route, param] = rawRoute.split('/');
     this.currentRoute = rawRoute;
@@ -173,10 +185,13 @@ const App = {
         </div>
       </aside>
 
+      <!-- Mobile Sidebar Backdrop (auto-closes sidebar when clicked) -->
+      <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="App.closeMobileSidebar()"></div>
+
       <div class="main-wrapper">
         <header class="topbar">
           <div class="topbar-left">
-            <button class="icon-btn" id="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">
+            <button class="icon-btn" id="mobile-toggle" onclick="App.toggleMobileSidebar()">
               <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <h1 class="view-title" id="page-title">TeamSync Workspace</h1>
@@ -199,13 +214,6 @@ const App = {
                 </div>
               </div>
             </div>
-
-            ${u.role_key !== 'EMPLOYEE' ? `
-              <button class="btn btn-primary" onclick="App.openCreateTaskModal()">
-                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
-                New Task
-              </button>
-            ` : ''}
           </div>
         </header>
 
@@ -219,6 +227,29 @@ const App = {
     `;
 
     this.loadNotificationCount();
+  },
+
+  /* -------------------------------------------------------------
+     MOBILE SIDEBAR HELPERS
+     ------------------------------------------------------------- */
+  toggleMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar) {
+      const isOpen = sidebar.classList.toggle('open');
+      if (backdrop) backdrop.classList.toggle('show', isOpen);
+    }
+  },
+
+  closeMobileSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+    }
+    if (backdrop) {
+      backdrop.classList.remove('show');
+    }
   },
 
   /* -------------------------------------------------------------
@@ -1920,6 +1951,7 @@ const App = {
      USER PROFILE MODAL & PASSWORD UPDATE
      ------------------------------------------------------------- */
   openProfileModal() {
+    this.closeMobileSidebar();
     const modal = document.getElementById('modal-container');
     modal.classList.add('show');
     const u = this.currentUser;
@@ -2038,9 +2070,14 @@ const App = {
     try {
       const res = await API.getNotifications({ limit: 1 });
       const badge = document.getElementById('notif-unread-count');
-      if (badge && res.meta && res.meta.unreadCount > 0) {
-        badge.textContent = res.meta.unreadCount;
-        badge.style.display = 'flex';
+      if (badge) {
+        if (res.meta && res.meta.unreadCount > 0) {
+          badge.textContent = res.meta.unreadCount > 99 ? '99+' : res.meta.unreadCount;
+          badge.style.display = 'flex';
+        } else {
+          badge.textContent = '0';
+          badge.style.display = 'none';
+        }
       }
     } catch (e) {
       // Ignore
@@ -2053,9 +2090,19 @@ const App = {
     const isShowing = dropdown.classList.toggle('show');
 
     if (isShowing) {
+      // Clear the notification count badge immediately upon opening
+      const badge = document.getElementById('notif-unread-count');
+      if (badge) {
+        badge.textContent = '0';
+        badge.style.display = 'none';
+      }
+
+      // Mark all notifications as read in backend
+      API.markAllNotificationsRead().catch(() => {});
+
       const container = document.getElementById('notif-list-container');
       try {
-        const res = await API.getNotifications({ limit: 10 });
+        const res = await API.getNotifications({ limit: 15 });
         const notifs = res.data || [];
 
         if (notifs.length === 0) {
@@ -2064,7 +2111,7 @@ const App = {
         }
 
         container.innerHTML = notifs.map(n => `
-          <div class="notif-item ${!n.read_at ? 'unread' : ''}" onclick="App.handleNotifClick(${n.id}, ${n.reference_id})">
+          <div class="notif-item" onclick="App.handleNotifClick(${n.id}, ${n.reference_id})">
             <div class="notif-title">${n.title}</div>
             <div class="notif-body">${n.body}</div>
             <div class="notif-time">${new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>

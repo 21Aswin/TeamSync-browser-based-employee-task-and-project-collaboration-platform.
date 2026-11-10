@@ -67,11 +67,12 @@ const Realtime = {
     this.socket.on('notification:new', (data) => {
       console.log('[REALTIME] Event notification:new received:', data);
       window.dispatchEvent(new CustomEvent('notification:new', { detail: data }));
-      // Update badge in topbar
+      // Update badge in topbar: increase count and show badge
       const badge = document.getElementById('notif-unread-count');
       if (badge) {
-        const count = parseInt(badge.textContent || '0', 10) + 1;
-        badge.textContent = count;
+        const isHidden = badge.style.display === 'none' || badge.textContent === '0' || !badge.textContent;
+        const count = isHidden ? 1 : parseInt(badge.textContent, 10) + 1;
+        badge.textContent = count > 99 ? '99+' : count;
         badge.style.display = 'flex';
       }
     });
