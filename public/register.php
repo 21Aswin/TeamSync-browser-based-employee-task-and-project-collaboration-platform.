@@ -31,11 +31,27 @@ include __DIR__ . '/includes/header.php';
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
         <div class="form-group">
           <label class="form-label">Password <span class="req">*</span></label>
-          <input type="password" id="reg-password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="reg-password" class="form-control" placeholder="Min. 6 characters" minlength="6" required style="padding-right:40px;">
+            <button type="button" onclick="togglePasswordVisibility('reg-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Confirm Password <span class="req">*</span></label>
-          <input type="password" id="reg-confirm-password" class="form-control" placeholder="Re-type password" minlength="6" required>
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="reg-confirm-password" class="form-control" placeholder="Re-type password" minlength="6" required style="padding-right:40px;">
+            <button type="button" onclick="togglePasswordVisibility('reg-confirm-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -79,6 +95,29 @@ include __DIR__ . '/includes/header.php';
 </div>
 
 <script>
+function togglePasswordVisibility(inputId, btnEl) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  const eyeOpen = `
+    <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+    </svg>
+  `;
+  const eyeSlash = `
+    <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/>
+    </svg>
+  `;
+  if (btnEl) {
+    btnEl.innerHTML = isPassword ? eyeSlash : eyeOpen;
+    btnEl.setAttribute('title', isPassword ? 'Hide Password' : 'Show Password');
+  }
+}
+
 async function handleRegister(e) {
   e.preventDefault();
   const btn = document.getElementById('reg-submit-btn');

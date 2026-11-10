@@ -109,12 +109,28 @@ include __DIR__ . '/includes/header.php';
 
         <div class="form-group">
           <label class="form-label">New Password <span class="req">*</span></label>
-          <input type="password" id="fp-new-password" class="form-control" placeholder="Min. 6 characters" minlength="6" required>
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="fp-new-password" class="form-control" placeholder="Min. 6 characters" minlength="6" required style="padding-right:40px;">
+            <button type="button" onclick="togglePasswordVisibility('fp-new-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Confirm New Password <span class="req">*</span></label>
-          <input type="password" id="fp-confirm-password" class="form-control" placeholder="Re-type password" minlength="6" required>
+          <div style="position:relative;display:flex;align-items:center;">
+            <input type="password" id="fp-confirm-password" class="form-control" placeholder="Re-type password" minlength="6" required style="padding-right:40px;">
+            <button type="button" onclick="togglePasswordVisibility('fp-confirm-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+              <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div id="fp-step2-error" style="display:none;padding:10px 14px;background-color:var(--danger-bg);color:var(--danger-text);border:1px solid var(--danger-border);border-radius:var(--radius-md);font-size:12px;margin-bottom:14px;"></div>

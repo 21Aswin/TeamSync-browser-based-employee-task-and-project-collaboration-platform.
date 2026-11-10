@@ -2,7 +2,8 @@ const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { JWT_SECRET } = require('../middleware/auth');
-const { setRealtimeEmitter } = require('../services/taskService');
+const { setRealtimeEmitter: setTaskRealtimeEmitter } = require('../services/taskService');
+const { setRealtimeEmitter: setProjectRealtimeEmitter } = require('../services/projectService');
 
 function initSocket(httpServer) {
   const io = new Server(httpServer, {
@@ -101,8 +102,7 @@ function initSocket(httpServer) {
     });
   });
 
-  // Inject helper emitter into taskService
-  setRealtimeEmitter({
+  const emitter = {
     emitToProject: (projectId, event, payload) => {
       io.to(`project:${projectId}`).emit(event, payload);
     },
@@ -112,7 +112,11 @@ function initSocket(httpServer) {
     emitAll: (event, payload) => {
       io.emit(event, payload);
     }
-  });
+  };
+
+  // Inject helper emitter into taskService and projectService
+  setTaskRealtimeEmitter(emitter);
+  setProjectRealtimeEmitter(emitter);
 
   return io;
 }

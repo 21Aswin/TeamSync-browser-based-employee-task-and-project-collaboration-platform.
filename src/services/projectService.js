@@ -1,5 +1,11 @@
 const db = require('../config/db');
 
+// Realtime emitter hook (injected from socket module)
+let ioEmitter = null;
+function setRealtimeEmitter(emitter) {
+  ioEmitter = emitter;
+}
+
 async function listProjects(user, { search, status, page = 1, limit = 20 }) {
   const offset = (Math.max(1, parseInt(page, 10)) - 1) * Math.max(1, parseInt(limit, 10));
   const parsedLimit = Math.max(1, parseInt(limit, 10));
@@ -164,16 +170,42 @@ async function createProject(user, { name, project_code, description, start_date
       member_ids.forEach(id => initialMembers.add(parseInt(id, 10)));
     }
 
+    const addedMembersToNotify = [];
     for (const memberId of initialMembers) {
       if (isNaN(memberId)) continue;
       // Verify member is active
       const [uRows] = await conn.query('SELECT id, status FROM users WHERE id = ?', [memberId]);
       if (uRows.length > 0 && uRows[0].status === 'ACTIVE') {
         await conn.query('INSERT IGNORE INTO project_members (project_id, user_id) VALUES (?, ?)', [projectId, memberId]);
+        if (memberId !== user.id) {
+          const [nRes] = await conn.query(
+            `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
+             VALUES (?, 'PROJECT_ADDED', 'Assigned to New Project', ?, 'PROJECT', ?)`,
+            [memberId, `You were added to project "${name.trim()}" (${cleanCode}) by ${user.name}.`, projectId]
+          );
+          addedMembersToNotify.push({
+            id: nRes.insertId,
+            user_id: memberId,
+            type: 'PROJECT_ADDED',
+            title: 'Assigned to New Project',
+            body: `You were added to project "${name.trim()}" (${cleanCode}) by ${user.name}.`,
+            reference_type: 'PROJECT',
+            reference_id: projectId,
+            read_at: null,
+            created_at: new Date().toISOString()
+          });
+        }
       }
     }
 
     await conn.commit();
+
+    if (ioEmitter) {
+      for (const notif of addedMembersToNotify) {
+        ioEmitter.emitToUser(notif.user_id, 'notification:new', { notification: notif });
+      }
+    }
+
     return getProjectById(user, projectId);
   } catch (err) {
     await conn.rollback();
@@ -257,6 +289,30 @@ async function addProjectMember(user, projectId, userId) {
     [projectId, userId]
   );
 
+  // Notify member if not the actor
+  if (parseInt(userId, 10) !== user.id) {
+    const [nRes] = await db.query(
+      `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
+       VALUES (?, 'PROJECT_ADDED', 'Added to Project', ?, 'PROJECT', ?)`,
+      [userId, `You were added as a team member to project "${project.name}" (${project.project_code}) by ${user.name}.`, projectId]
+    );
+    if (ioEmitter) {
+      ioEmitter.emitToUser(userId, 'notification:new', {
+        notification: {
+          id: nRes.insertId,
+          user_id: parseInt(userId, 10),
+          type: 'PROJECT_ADDED',
+          title: 'Added to Project',
+          body: `You were added as a team member to project "${project.name}" (${project.project_code}) by ${user.name}.`,
+          reference_type: 'PROJECT',
+          reference_id: projectId,
+          read_at: null,
+          created_at: new Date().toISOString()
+        }
+      });
+    }
+  }
+
   return getProjectById(user, projectId);
 }
 
@@ -282,5 +338,6 @@ module.exports = {
   createProject,
   updateProject,
   addProjectMember,
-  removeProjectMember
+  removeProjectMember,
+  setRealtimeEmitter
 };

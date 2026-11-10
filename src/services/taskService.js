@@ -564,6 +564,7 @@ async function updateTask(user, taskId, { title, description, priority, assignee
   }
 
   const conn = await db.getConnection();
+  const notificationsToEmit = [];
   try {
     await conn.beginTransaction();
 
@@ -588,11 +589,22 @@ async function updateTask(user, taskId, { title, description, priority, assignee
         await conn.query('INSERT INTO task_assignees (task_id, user_id, assigned_by) VALUES (?, ?, ?)', [taskId, assigneeId, user.id]);
 
         if (parseInt(assigneeId, 10) !== user.id) {
-          await conn.query(
+          const [nRes] = await conn.query(
             `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
              VALUES (?, 'TASK_ASSIGNED', 'Task assigned to you', ?, 'TASK', ?)`,
-            [assigneeId, `You were assigned to task "${task.title}"`, taskId]
+            [assigneeId, `You were assigned to task "${task.title}" by ${user.name}`, taskId]
           );
+          notificationsToEmit.push({
+            id: nRes.insertId,
+            user_id: parseInt(assigneeId, 10),
+            type: 'TASK_ASSIGNED',
+            title: 'Task assigned to you',
+            body: `You were assigned to task "${task.title}" by ${user.name}`,
+            reference_type: 'TASK',
+            reference_id: taskId,
+            read_at: null,
+            created_at: new Date().toISOString()
+          });
         }
       }
     }
@@ -603,11 +615,36 @@ async function updateTask(user, taskId, { title, description, priority, assignee
       [taskId, user.id]
     );
 
+    // If details updated, notify current assignee
+    if (updates.length > 0 && task.assignee_id && task.assignee_id !== user.id) {
+      const notifMsg = `Task "${task.title}" details were updated by ${user.name}.`;
+      const [nRes] = await conn.query(
+        `INSERT INTO notifications (user_id, type, title, body, reference_type, reference_id)
+         VALUES (?, 'TASK_UPDATED', 'Task Details Updated', ?, 'TASK', ?)`,
+        [task.assignee_id, notifMsg, taskId]
+      );
+      notificationsToEmit.push({
+        id: nRes.insertId,
+        user_id: task.assignee_id,
+        type: 'TASK_UPDATED',
+        title: 'Task Details Updated',
+        body: notifMsg,
+        reference_type: 'TASK',
+        reference_id: taskId,
+        read_at: null,
+        created_at: new Date().toISOString()
+      });
+    }
+
     await conn.commit();
 
     const updatedTask = await getTaskById(user, taskId);
 
     if (ioEmitter) {
+      for (const n of notificationsToEmit) {
+        ioEmitter.emitToUser(n.user_id, 'notification:new', { notification: n });
+      }
+
       ioEmitter.emitToProject(task.project_id, 'task:status_changed', {
         taskId,
         projectId: task.project_id,

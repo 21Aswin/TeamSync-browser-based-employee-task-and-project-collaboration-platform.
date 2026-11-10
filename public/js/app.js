@@ -311,6 +311,9 @@ const App = {
   renderLogin() {
     const appEl = document.getElementById('app');
     if (!appEl) return;
+    // Preserve active login form and typing if already rendered
+    if (document.getElementById('login-form')) return;
+
     appEl.innerHTML = `
       <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background-color:var(--bg-canvas);padding:20px;">
         <div class="card" style="width:100%;max-width:440px;padding:32px;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);">
@@ -328,7 +331,15 @@ const App = {
 
             <div class="form-group">
               <label class="form-label">Password</label>
-              <input type="password" id="login-password" class="form-control" placeholder="••••••••••••" required>
+              <div style="position:relative;display:flex;align-items:center;">
+                <input type="password" id="login-password" class="form-control" placeholder="••••••••••••" required style="padding-right:40px;">
+                <button type="button" onclick="App.togglePasswordVisibility('login-password', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+                  <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div id="login-error" style="display:none;padding:10px;background-color:var(--danger-bg);color:var(--danger-text);border:1px solid var(--danger-border);border-radius:var(--radius-md);font-size:12px;margin-bottom:16px;"></div>
@@ -2055,11 +2066,27 @@ const App = {
           <form onsubmit="App.handleChangePassword(event)">
             <div class="form-group">
               <label class="form-label">Current Password</label>
-              <input type="password" id="prof-cur-pass" class="form-control" placeholder="••••••••••••" required>
+              <div style="position:relative;display:flex;align-items:center;">
+                <input type="password" id="prof-cur-pass" class="form-control" placeholder="••••••••••••" required style="padding-right:40px;">
+                <button type="button" onclick="App.togglePasswordVisibility('prof-cur-pass', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+                  <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">New Password (min 6 characters)</label>
-              <input type="password" id="prof-new-pass" class="form-control" placeholder="New secure password" minlength="6" required>
+              <div style="position:relative;display:flex;align-items:center;">
+                <input type="password" id="prof-new-pass" class="form-control" placeholder="New secure password" minlength="6" required style="padding-right:40px;">
+                <button type="button" onclick="App.togglePasswordVisibility('prof-new-pass', this)" style="position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text-muted);display:flex;align-items:center;padding:4px;" title="Show Password">
+                  <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                  </svg>
+                </button>
+              </div>
             </div>
             <button type="submit" class="btn btn-secondary btn-sm">Change Password</button>
           </form>
@@ -2179,11 +2206,22 @@ const App = {
     const isShowing = dropdown.classList.toggle('show');
 
     if (isShowing) {
+      // 1. Immediately reset the badge count to 0 in UI so it doesn't stay
+      const badge = document.getElementById('notif-unread-count');
+      if (badge) {
+        badge.textContent = '0';
+        badge.style.display = 'none';
+      }
+
+      // 2. Fetch notifications to show
       const container = document.getElementById('notif-list-container');
       try {
         container.innerHTML = `<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12px;">Loading notifications...</div>`;
-        const res = await API.getNotifications({ limit: 20 });
+        const res = await API.getNotifications({ limit: 25 });
         const notifs = res.data || [];
+
+        // 3. Mark all as read in backend so subsequent visits and pages stay cleared
+        API.markAllNotificationsRead().catch(() => {});
 
         if (notifs.length === 0) {
           container.innerHTML = `<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:13px;">No notifications yet.</div>`;
@@ -2261,7 +2299,9 @@ const App = {
   }
 };
 
-// Start application on DOM Ready
+// Start application on DOM Ready ONLY if #app element exists (prevents interfering with standalone pages)
 document.addEventListener('DOMContentLoaded', () => {
-  App.init();
+  if (document.getElementById('app')) {
+    App.init();
+  }
 });
