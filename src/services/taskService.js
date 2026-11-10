@@ -84,7 +84,7 @@ async function listTasks(user, { projectId, status, priority, assigneeId, assign
             ta.user_id AS assignee_id, u_ass.name AS assignee_name, u_ass.email AS assignee_email,
             (SELECT COUNT(*) FROM task_comments tc WHERE tc.task_id = t.id) AS comment_count,
             CASE
-              WHEN t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < CURDATE() THEN 1
+              WHEN t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < NOW() THEN 1
               ELSE 0
             END AS is_overdue
      FROM tasks t
@@ -116,7 +116,7 @@ async function getTaskById(user, taskId) {
             t.created_by, u_creator.name AS creator_name,
             ta.user_id AS assignee_id, u_ass.name AS assignee_name, u_ass.email AS assignee_email,
             CASE
-              WHEN t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < CURDATE() THEN 1
+              WHEN t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < NOW() THEN 1
               ELSE 0
             END AS is_overdue
      FROM tasks t

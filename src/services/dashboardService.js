@@ -45,7 +45,7 @@ async function getAdminStats() {
   const [overdueRows] = await db.query(
     `SELECT COUNT(*) AS overdue_count
      FROM tasks
-     WHERE status != 'COMPLETED' AND due_date IS NOT NULL AND due_date < CURDATE()`
+     WHERE status != 'COMPLETED' AND due_date IS NOT NULL AND due_date < NOW()`
   );
 
   // 5. Total tasks & completion rate
@@ -114,7 +114,7 @@ async function getManagerStats(managerId) {
     `SELECT COUNT(*) AS overdue_count
      FROM tasks t
      JOIN projects p ON t.project_id = p.id
-     WHERE p.manager_id = ? AND t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < CURDATE()`,
+     WHERE p.manager_id = ? AND t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < NOW()`,
     [managerId]
   );
 
@@ -182,7 +182,7 @@ async function getEmployeeStats(employeeId) {
     `SELECT COUNT(*) AS overdue_count
      FROM tasks t
      JOIN task_assignees ta ON ta.task_id = t.id
-     WHERE ta.user_id = ? AND t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < CURDATE()`,
+     WHERE ta.user_id = ? AND t.status != 'COMPLETED' AND t.due_date IS NOT NULL AND t.due_date < NOW()`,
     [employeeId]
   );
 

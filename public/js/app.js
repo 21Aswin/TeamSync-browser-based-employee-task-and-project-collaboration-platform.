@@ -254,6 +254,31 @@ const App = {
   },
 
   /* -------------------------------------------------------------
+     DATE & TIME FORMATTING HELPERS
+     ------------------------------------------------------------- */
+  formatDateTime(dtStr) {
+    if (!dtStr) return 'N/A';
+    const d = new Date(dtStr);
+    if (isNaN(d.getTime())) return dtStr;
+    const datePart = d.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    const timePart = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return `${datePart}, ${timePart}`;
+  },
+
+  formatInputDateTime(dtStr) {
+    if (!dtStr) return '';
+    const d = new Date(dtStr);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    const year = d.getFullYear();
+    const month = pad(d.getMonth() + 1);
+    const day = pad(d.getDate());
+    const hours = pad(d.getHours());
+    const minutes = pad(d.getMinutes());
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  },
+
+  /* -------------------------------------------------------------
      LOGIN VIEW
      ------------------------------------------------------------- */
   renderLogin() {
@@ -623,7 +648,7 @@ const App = {
             </div>
             <p style="font-size:14px;color:var(--text-main);max-width:800px;">${project.description || 'No description.'}</p>
             <div style="font-size:12px;color:var(--text-tertiary);margin-top:6px;">
-              Dates: ${project.start_date || 'N/A'} → ${project.due_date || 'N/A'}
+              Dates: ${App.formatDateTime(project.start_date)} → ${App.formatDateTime(project.due_date)}
             </div>
           </div>
 
@@ -672,7 +697,7 @@ const App = {
                       <td>${t.assignee_name || '<span style="color:var(--text-tertiary);">Unassigned</span>'}</td>
                       <td><span class="badge priority-${t.priority}">${t.priority}</span></td>
                       <td><span class="badge status-${t.status}">${t.status.replace('_', ' ')}</span></td>
-                      <td style="${t.is_overdue ? 'color:var(--danger-text);font-weight:700;' : ''}">${t.due_date || 'N/A'}</td>
+                      <td style="${t.is_overdue ? 'color:var(--danger-text);font-weight:700;' : ''}">${App.formatDateTime(t.due_date)}</td>
                     </tr>
                   `).join('') : `
                     <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No tasks in this project yet.</td></tr>
@@ -846,8 +871,8 @@ const App = {
                   </select>
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Due Date</label>
-                  <input type="date" id="edit-proj-due" class="form-control" value="${project.due_date || ''}">
+                  <label class="form-label">Due Date & Time</label>
+                  <input type="datetime-local" id="edit-proj-due" class="form-control" value="${App.formatInputDateTime(project.due_date)}">
                 </div>
               </div>
             </div>
@@ -996,7 +1021,7 @@ const App = {
                      onclick="App.openTaskDetails(${t.id})">
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                     <span class="badge priority-${t.priority}">${t.priority}</span>
-                    <span style="font-size:11px;color:var(--text-tertiary);">${t.due_date ? t.due_date : 'No date'}</span>
+                    <span style="font-size:11px;color:var(--text-tertiary);" title="Due Date & Time">${t.due_date ? App.formatDateTime(t.due_date) : 'No deadline'}</span>
                   </div>
 
                   <div class="task-card-title">${t.title}</div>
@@ -1117,8 +1142,8 @@ const App = {
                 <div style="font-weight:600;font-size:13px;">${task.assignee_name || 'Unassigned'}</div>
               </div>
               <div>
-                <div style="font-size:11px;color:var(--text-muted);">Due Date</div>
-                <div style="font-weight:600;font-size:13px;${task.is_overdue ? 'color:var(--danger-text);' : ''}">${task.due_date || 'N/A'}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Due Date & Time</div>
+                <div style="font-weight:600;font-size:13px;${task.is_overdue ? 'color:var(--danger-text);' : ''}">${App.formatDateTime(task.due_date)}</div>
               </div>
               <div style="grid-column:1/-1;">
                 <label class="form-label" style="margin-bottom:4px;">Change Status</label>
@@ -1260,12 +1285,12 @@ const App = {
               </div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
                 <div class="form-group">
-                  <label class="form-label">Start Date</label>
-                  <input type="date" id="edit-task-start" class="form-control" value="${task.start_date || ''}">
+                  <label class="form-label">Start Date & Time</label>
+                  <input type="datetime-local" id="edit-task-start" class="form-control" value="${App.formatInputDateTime(task.start_date)}">
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Due Date</label>
-                  <input type="date" id="edit-task-due" class="form-control" value="${task.due_date || ''}">
+                  <label class="form-label">Due Date & Time</label>
+                  <input type="datetime-local" id="edit-task-due" class="form-control" value="${App.formatInputDateTime(task.due_date)}">
                 </div>
               </div>
             </div>
@@ -1336,12 +1361,12 @@ const App = {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div class="form-group">
-                <label class="form-label">Start Date</label>
-                <input type="date" id="new-proj-start" class="form-control">
+                <label class="form-label">Start Date & Time</label>
+                <input type="datetime-local" id="new-proj-start" class="form-control">
               </div>
               <div class="form-group">
-                <label class="form-label">Due Date</label>
-                <input type="date" id="new-proj-due" class="form-control">
+                <label class="form-label">Due Date & Time</label>
+                <input type="datetime-local" id="new-proj-due" class="form-control">
               </div>
             </div>
             <div class="form-group">
@@ -1462,12 +1487,12 @@ const App = {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
               <div class="form-group">
-                <label class="form-label">Start Date</label>
-                <input type="date" id="new-task-start" class="form-control">
+                <label class="form-label">Start Date & Time</label>
+                <input type="datetime-local" id="new-task-start" class="form-control">
               </div>
               <div class="form-group">
-                <label class="form-label">Due Date</label>
-                <input type="date" id="new-task-due" class="form-control">
+                <label class="form-label">Due Date & Time</label>
+                <input type="datetime-local" id="new-task-due" class="form-control">
               </div>
             </div>
           </div>
