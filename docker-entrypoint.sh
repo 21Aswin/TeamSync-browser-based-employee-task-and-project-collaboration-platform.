@@ -11,20 +11,22 @@ else
 
   if [ ! -d "/var/lib/mysql/mysql" ]; then
     echo "[ENTRYPOINT] Initializing MariaDB data directory..."
-    mariadb-install-db --user=mysql --datadir=/var/lib/mysql > /dev/null 2>&1
+    mariadb-install-db --user=mysql --datadir=/var/lib/mysql --auth-root-authentication-method=normal > /dev/null 2>&1
   fi
 
-  /usr/bin/mysqld --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0 --skip-networking=0 &
+  echo "[ENTRYPOINT] Launching mariadbd daemon..."
+  /usr/bin/mariadbd --user=mysql --datadir=/var/lib/mysql --bind-address=0.0.0.0 --skip-networking=0 --skip-grant-tables --skip-name-resolve &
   
   echo "[ENTRYPOINT] Waiting for MySQL server to start..."
-  until mysqladmin ping -h 127.0.0.1 --silent; do
+  until /usr/bin/mariadb-admin ping -h 127.0.0.1 --silent; do
     sleep 1
   done
   echo "[ENTRYPOINT] MySQL started successfully."
 
-  mysql -u root -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME:-teamsync_db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-  mysql -u root -e "FLUSH PRIVILEGES;"
+  /usr/bin/mariadb -h 127.0.0.1 -u root -e "CREATE DATABASE IF NOT EXISTS \`${DB_NAME:-teamsync_db}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" || true
 fi
+
+export DB_HOST=${DB_HOST:-127.0.0.1}
 
 echo "[ENTRYPOINT] Running migrations..."
 node src/database/migrate.js
