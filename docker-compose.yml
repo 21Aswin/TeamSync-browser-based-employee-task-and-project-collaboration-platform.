@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: teamsync-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: teamsync_db
+      MYSQL_USER: teamsync_user
+      MYSQL_PASSWORD: teamsync_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./src/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - teamsync-network
+
+  app:
+    build: .
+    container_name: teamsync-app
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: teamsync_user
+      DB_PASSWORD: teamsync_password
+      DB_NAME: teamsync_db
+      JWT_SECRET: teamsync_super_secret_jwt_key_2026_production_secure_token
+      JWT_EXPIRES_IN: 24h
+      COOKIE_SECURE: "false"
+      CLIENT_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "node src/database/migrate.js && node src/database/seed.js && node server.js"
+    networks:
+      - teamsync-network
+
+volumes:
+  mysql_data:
+
+networks:
+  teamsync-network:
+    driver: bridge
