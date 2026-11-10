@@ -85,6 +85,13 @@ const App = {
         dropdown.classList.remove('show');
       }
     });
+
+    // Close sidebar on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeSidebar();
+      }
+    });
   },
 
   navigate(rawRoute) {
@@ -93,8 +100,8 @@ const App = {
       return;
     }
 
-    // Auto-close mobile sidebar when user navigates to any page
-    this.closeMobileSidebar();
+    // Auto-close sidebar when user navigates to any page
+    this.closeSidebar();
 
     const [route, param] = rawRoute.split('/');
     this.currentRoute = rawRoute;
@@ -152,38 +159,40 @@ const App = {
     if (!appEl) return;
     const u = this.currentUser;
     const initials = u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    const isDesktopCollapsed = localStorage.getItem('teamsync_sidebar_collapsed') === 'true' && window.innerWidth > 900;
 
     appEl.innerHTML = `
-      <aside class="sidebar ${isDesktopCollapsed ? 'collapsed' : ''}" id="sidebar">
-        <div class="sidebar-header">
-          <div class="brand-icon">T</div>
-          <span class="brand-title">TeamSync</span>
-          <span class="brand-badge">${u.role_key}</span>
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header" style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:var(--space-sm);">
+            <div class="brand-icon">T</div>
+            <span class="brand-title">TeamSync</span>
+            <span class="brand-badge">${u.role_key}</span>
+          </div>
+          <button class="icon-btn btn-sm" onclick="App.closeSidebar()" title="Close Sidebar" style="color:var(--text-secondary);">✕</button>
         </div>
 
         <nav class="nav-section">
           <div class="nav-label">Core Workspace</div>
-          <div class="nav-item" data-route="dashboard" onclick="location.hash='#dashboard'">
+          <div class="nav-item" data-route="dashboard" onclick="App.closeSidebar(); location.hash='#dashboard'">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
             Dashboard
           </div>
-          <div class="nav-item" data-route="projects" onclick="location.hash='#projects'">
+          <div class="nav-item" data-route="projects" onclick="App.closeSidebar(); location.hash='#projects'">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
             Projects
           </div>
-          <div class="nav-item" data-route="kanban" onclick="location.hash='#kanban'">
+          <div class="nav-item" data-route="kanban" onclick="App.closeSidebar(); location.hash='#kanban'">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
             Task Board
           </div>
 
           ${u.role_key === 'ADMIN' ? `
             <div class="nav-label">Administration</div>
-            <div class="nav-item" data-route="employees" onclick="location.hash='#employees'">
+            <div class="nav-item" data-route="employees" onclick="App.closeSidebar(); location.hash='#employees'">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
               Employees
             </div>
-            <div class="nav-item" data-route="departments" onclick="location.hash='#departments'">
+            <div class="nav-item" data-route="departments" onclick="App.closeSidebar(); location.hash='#departments'">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
               Departments
             </div>
@@ -204,13 +213,13 @@ const App = {
         </div>
       </aside>
 
-      <!-- Mobile Sidebar Backdrop (auto-closes sidebar when clicked) -->
-      <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="App.closeMobileSidebar()"></div>
+      <!-- Global Sidebar Backdrop (closes drawer on click) -->
+      <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="App.closeSidebar()"></div>
 
       <div class="main-wrapper">
         <header class="topbar">
           <div class="topbar-left">
-            <button class="icon-btn" id="sidebar-toggle-btn" onclick="App.toggleSidebar()" title="Toggle Sidebar">
+            <button class="icon-btn" id="sidebar-toggle-btn" onclick="App.toggleSidebar()" title="Toggle Menu">
               <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </button>
             <h1 class="view-title" id="page-title">TeamSync Workspace</h1>
@@ -249,19 +258,24 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     SIDEBAR HELPERS (Works on Desktop Collapse & Mobile Drawer)
+     SIDEBAR CONTROLS (Universal Drawer for Desktop & Mobile)
      ------------------------------------------------------------- */
   toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
     if (!sidebar) return;
+    const isOpen = sidebar.classList.toggle('open');
+    if (backdrop) backdrop.classList.toggle('show', isOpen);
+  },
 
-    if (window.innerWidth <= 900) {
-      const isOpen = sidebar.classList.toggle('open');
-      if (backdrop) backdrop.classList.toggle('show', isOpen);
-    } else {
-      const isCollapsed = sidebar.classList.toggle('collapsed');
-      localStorage.setItem('teamsync_sidebar_collapsed', isCollapsed ? 'true' : 'false');
+  closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (sidebar && sidebar.classList.contains('open')) {
+      sidebar.classList.remove('open');
+    }
+    if (backdrop && backdrop.classList.contains('show')) {
+      backdrop.classList.remove('show');
     }
   },
 
@@ -270,14 +284,7 @@ const App = {
   },
 
   closeMobileSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const backdrop = document.getElementById('sidebar-backdrop');
-    if (sidebar && sidebar.classList.contains('open')) {
-      sidebar.classList.remove('open');
-    }
-    if (backdrop) {
-      backdrop.classList.remove('show');
-    }
+    this.closeSidebar();
   },
 
   /* -------------------------------------------------------------
@@ -2052,7 +2059,7 @@ const App = {
      USER PROFILE MODAL & PASSWORD UPDATE
      ------------------------------------------------------------- */
   openProfileModal() {
-    this.closeMobileSidebar();
+    this.closeSidebar();
     const modal = document.getElementById('modal-container');
     modal.classList.add('show');
     const u = this.currentUser;
@@ -2331,6 +2338,9 @@ const App = {
     this.currentTaskId = null;
   }
 };
+
+// Expose App globally to window for inline onclick handlers
+window.App = App;
 
 // Start application on DOM Ready ONLY if #app element exists (prevents interfering with standalone pages)
 document.addEventListener('DOMContentLoaded', () => {
