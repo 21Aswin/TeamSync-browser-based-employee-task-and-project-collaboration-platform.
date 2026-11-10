@@ -132,6 +132,7 @@ const App = {
      ------------------------------------------------------------- */
   renderShell() {
     const appEl = document.getElementById('app');
+    if (!appEl) return;
     const u = this.currentUser;
     const initials = u.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 
@@ -257,6 +258,7 @@ const App = {
      ------------------------------------------------------------- */
   renderLogin() {
     const appEl = document.getElementById('app');
+    if (!appEl) return;
     appEl.innerHTML = `
       <div style="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;background-color:var(--bg-canvas);padding:20px;">
         <div class="card" style="width:100%;max-width:440px;padding:32px;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);">
