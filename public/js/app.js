@@ -546,8 +546,8 @@ const App = {
             <div class="time-wheel-fade bottom"></div>
           </div>
 
-          <!-- Single Click AM/PM Toggle Button -->
-          <button type="button" id="custom-dt-ampm-single-btn" class="ampm-single-btn ${ampm === 'PM' ? 'pm' : ''}" onclick="App.togglePickerAmPm()" title="Click to toggle between AM and PM">
+          <!-- Single Click AM/PM Toggle Button (Identical style for both AM and PM) -->
+          <button type="button" id="custom-dt-ampm-single-btn" class="ampm-single-btn" onclick="App.togglePickerAmPm()" title="Click to toggle between AM and PM">
             ${ampm}
           </button>
         </div>
@@ -688,7 +688,6 @@ const App = {
     const btn = document.getElementById('custom-dt-ampm-single-btn');
     if (btn) {
       btn.textContent = this.pickerState.ampm;
-      btn.classList.toggle('pm', this.pickerState.ampm === 'PM');
     }
   },
 

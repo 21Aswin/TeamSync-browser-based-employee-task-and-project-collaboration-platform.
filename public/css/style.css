@@ -1710,11 +1710,6 @@ textarea.form-control {
   transform: scale(0.96);
 }
 
-.ampm-single-btn.pm {
-  background-color: var(--secondary);
-  border-color: var(--secondary);
-}
-
 .custom-dt-actions {
   display: flex;
   justify-content: space-between;
