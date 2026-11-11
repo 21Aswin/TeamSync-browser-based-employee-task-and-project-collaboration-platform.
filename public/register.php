@@ -28,7 +28,7 @@ include __DIR__ . '/includes/header.php';
         <input type="email" id="reg-email" class="form-control" placeholder="name@teamsync.internal" required>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row-2col">
         <div class="form-group">
           <label class="form-label">Password <span class="req">*</span></label>
           <div style="position:relative;display:flex;align-items:center;">
@@ -55,7 +55,7 @@ include __DIR__ . '/includes/header.php';
         </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-row-2col">
         <div class="form-group">
           <label class="form-label">Account Role <span class="req">*</span></label>
           <select id="reg-role" class="form-control" required>

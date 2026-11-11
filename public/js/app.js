@@ -14,6 +14,8 @@ const App = {
   kanbanMyTasksOnly: false,
 
   async init() {
+    this.setupSelectObserver();
+    this.enhanceSelects(document);
     this.bindEvents();
     const token = API.getToken();
     if (token) {
@@ -92,11 +94,9 @@ const App = {
         projDropdown.classList.remove('show');
       }
 
-      // Close project status dropdown when clicking outside
-      const statusDropdown = document.getElementById('project-status-dropdown');
-      const statusTrigger = document.getElementById('project-status-btn');
-      if (statusDropdown && statusDropdown.classList.contains('show') && statusTrigger && !statusTrigger.contains(e.target) && !statusDropdown.contains(e.target)) {
-        statusDropdown.classList.remove('show');
+      // Close all custom select dropdowns when clicking outside
+      if (!e.target.closest('.custom-select-wrapper')) {
+        document.querySelectorAll('.custom-select-dropdown.show').forEach((d) => d.classList.remove('show'));
       }
     });
 
@@ -372,6 +372,8 @@ const App = {
   },
 
   openDateTimePicker(targetId, label = 'Select Date & Time') {
+    document.querySelectorAll('.custom-select-dropdown.show').forEach((d) => d.classList.remove('show'));
+    document.querySelectorAll('.custom-select-wrapper.is-open').forEach((w) => w.classList.remove('is-open'));
     this.pickerState.targetId = targetId;
     this.pickerState.targetLabel = label;
 
@@ -484,13 +486,17 @@ const App = {
 
         <div class="custom-dt-time-wrap">
           <span class="custom-dt-time-label">Time:</span>
-          <select id="custom-dt-hour" class="form-control" style="width:68px;padding:0 8px;height:36px;" onchange="App.pickerState.hour = parseInt(this.value, 10)">
-            ${hoursHtml}
-          </select>
-          <span style="font-weight:700;">:</span>
-          <select id="custom-dt-minute" class="form-control" style="width:68px;padding:0 8px;height:36px;" onchange="App.pickerState.minute = parseInt(this.value, 10)">
-            ${minutesHtml}
-          </select>
+          <div class="time-stepper">
+            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('hour', -1)">−</button>
+            <span class="stepper-val" id="custom-dt-hour-val">${pad(hour)}</span>
+            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('hour', 1)">+</button>
+          </div>
+          <span style="font-weight:700;color:var(--text-muted);">:</span>
+          <div class="time-stepper">
+            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('min', -5)">−</button>
+            <span class="stepper-val" id="custom-dt-min-val">${pad(minute)}</span>
+            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('min', 5)">+</button>
+          </div>
           <div class="custom-dt-ampm-toggle">
             <button type="button" class="ampm-btn ${ampm === 'AM' ? 'active' : ''}" onclick="App.setPickerAmPm('AM')">AM</button>
             <button type="button" class="ampm-btn ${ampm === 'PM' ? 'active' : ''}" onclick="App.setPickerAmPm('PM')">PM</button>
@@ -524,6 +530,24 @@ const App = {
     this.renderCustomDateTimePicker();
   },
 
+  stepPickerTime(type, step) {
+    if (type === 'hour') {
+      let h = this.pickerState.hour + step;
+      if (h < 1) h = 12;
+      if (h > 12) h = 1;
+      this.pickerState.hour = h;
+      const el = document.getElementById('custom-dt-hour-val');
+      if (el) el.textContent = String(h).padStart(2, '0');
+    } else if (type === 'min') {
+      let m = this.pickerState.minute + step;
+      if (m < 0) m = 55;
+      if (m >= 60) m = 0;
+      this.pickerState.minute = m;
+      const el = document.getElementById('custom-dt-min-val');
+      if (el) el.textContent = String(m).padStart(2, '0');
+    }
+  },
+
   selectPickerDay(dateStr) {
     this.pickerState.selectedDate = dateStr;
     this.renderCustomDateTimePicker();
@@ -542,6 +566,10 @@ const App = {
   closeCustomDateTimePicker() {
     const modal = document.getElementById('custom-dt-picker-modal');
     if (modal) modal.classList.remove('show');
+  },
+
+  closeDateTimePicker() {
+    this.closeCustomDateTimePicker();
   },
 
   clearDateTimePicker() {
@@ -603,6 +631,140 @@ const App = {
     } catch (e) {
       return val;
     }
+  },
+
+  /* -------------------------------------------------------------
+     UNIVERSAL IN-DOM CUSTOM SELECT ENHANCER
+     Guarantees ALL dropdown options stay strictly inside phone body
+     ------------------------------------------------------------- */
+  rebuildSelectOptions(select) {
+    if (!select) return;
+    const wrapper = select.closest('.custom-select-wrapper');
+    if (!wrapper) return;
+    const trigger = wrapper.querySelector('.custom-select-trigger');
+    const dropdown = wrapper.querySelector('.custom-select-dropdown');
+    if (!trigger || !dropdown) return;
+
+    const selectedOption = select.options[select.selectedIndex] || select.options[0];
+    const currentText = selectedOption ? selectedOption.textContent.trim() : 'Select option...';
+
+    trigger.innerHTML = `
+      <span class="custom-select-trigger-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${currentText}</span>
+      <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    `;
+
+    dropdown.innerHTML = '';
+    Array.from(select.options).forEach((opt) => {
+      const optDiv = document.createElement('div');
+      optDiv.className = 'custom-select-option' + (opt.selected ? ' selected' : '');
+      optDiv.setAttribute('data-value', opt.value);
+      optDiv.textContent = opt.textContent.trim();
+
+      optDiv.onclick = (e) => {
+        e.stopPropagation();
+        select.value = opt.value;
+        const txtSpan = trigger.querySelector('.custom-select-trigger-text');
+        if (txtSpan) txtSpan.textContent = opt.textContent.trim();
+        dropdown.querySelectorAll('.custom-select-option').forEach((o) => o.classList.remove('selected'));
+        optDiv.classList.add('selected');
+        dropdown.classList.remove('show');
+        wrapper.classList.remove('is-open');
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
+      dropdown.appendChild(optDiv);
+    });
+  },
+
+  enhanceSelect(select) {
+    if (!select || select.id === 'kanban-project-select' || select.getAttribute('data-enhanced') === 'true') return;
+    select.setAttribute('data-enhanced', 'true');
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'custom-select-wrapper';
+    wrapper.style.position = 'relative';
+    wrapper.style.width = '100%';
+    if (select.style.flex) wrapper.style.flex = select.style.flex;
+    if (select.style.minWidth) wrapper.style.minWidth = select.style.minWidth;
+
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    select.style.position = 'absolute';
+    select.style.opacity = '0';
+    select.style.pointerEvents = 'none';
+    select.style.width = '0';
+    select.style.height = '0';
+    select.style.margin = '0';
+    select.style.padding = '0';
+    select.style.border = 'none';
+    select.tabIndex = -1;
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'custom-select-trigger form-control';
+    wrapper.appendChild(trigger);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'custom-select-dropdown';
+    wrapper.appendChild(dropdown);
+
+    trigger.onclick = (e) => {
+      e.stopPropagation();
+      const wasOpen = dropdown.classList.contains('show');
+      document.querySelectorAll('.custom-select-dropdown.show').forEach((d) => d.classList.remove('show'));
+      document.querySelectorAll('.custom-select-wrapper.is-open').forEach((w) => w.classList.remove('is-open'));
+      if (!wasOpen) {
+        dropdown.classList.add('show');
+        wrapper.classList.add('is-open');
+      }
+    };
+
+    select.addEventListener('change', () => {
+      const cur = select.options[select.selectedIndex];
+      if (cur) {
+        const txtSpan = trigger.querySelector('.custom-select-trigger-text');
+        if (txtSpan) txtSpan.textContent = cur.textContent.trim();
+        dropdown.querySelectorAll('.custom-select-option').forEach((o) => {
+          o.classList.toggle('selected', o.getAttribute('data-value') === cur.value);
+        });
+      }
+    });
+
+    this.rebuildSelectOptions(select);
+  },
+
+  enhanceSelects(root = document) {
+    if (!root) return;
+    const selects = root.querySelectorAll('select:not(#kanban-project-select):not([data-enhanced="true"])');
+    selects.forEach((s) => this.enhanceSelect(s));
+  },
+
+  setupSelectObserver() {
+    if (this._observerInitialized) return;
+    this._observerInitialized = true;
+
+    const observer = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.type === 'childList') {
+          for (const node of m.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              if (node.tagName === 'SELECT') {
+                this.enhanceSelect(node);
+              } else if (node.querySelectorAll) {
+                const selects = node.querySelectorAll('select:not(#kanban-project-select):not([data-enhanced="true"])');
+                selects.forEach((s) => this.enhanceSelect(s));
+              }
+            }
+          }
+          if (m.target && m.target.tagName === 'SELECT' && m.target.getAttribute('data-enhanced') === 'true') {
+            this.rebuildSelectOptions(m.target);
+          }
+        }
+      }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
   },
 
   /* -------------------------------------------------------------
@@ -2040,6 +2202,7 @@ const App = {
       sel.innerHTML = `<option value="">Unassigned</option>` + (proj.members || []).map(m => `
         <option value="${m.id}">${m.name} (${m.role_name})</option>
       `).join('');
+      this.rebuildSelectOptions(sel);
     } catch (e) {
       // Ignore
     }
@@ -2783,6 +2946,8 @@ const App = {
      MODAL CONTROLS
      ------------------------------------------------------------- */
   closeModal() {
+    document.querySelectorAll('.custom-select-dropdown.show').forEach((d) => d.classList.remove('show'));
+    document.querySelectorAll('.custom-select-wrapper.is-open').forEach((w) => w.classList.remove('is-open'));
     const modal = document.getElementById('modal-container');
     if (modal) {
       modal.classList.remove('show');
@@ -2795,8 +2960,10 @@ const App = {
 // Expose App globally to window for inline onclick handlers
 window.App = App;
 
-// Start application on DOM Ready ONLY if #app element exists (prevents interfering with standalone pages)
+// Start application on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
+  App.setupSelectObserver();
+  App.enhanceSelects(document);
   if (document.getElementById('app')) {
     App.init();
   }

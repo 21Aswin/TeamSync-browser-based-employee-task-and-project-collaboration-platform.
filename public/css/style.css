@@ -714,6 +714,10 @@ button svg {
   box-sizing: border-box;
 }
 
+.custom-select-wrapper.is-open {
+  z-index: 150;
+}
+
 .custom-select-trigger {
   display: flex;
   align-items: center;
@@ -733,7 +737,6 @@ button svg {
   font-size: 13px;
   color: var(--text-main);
 }
-}
 
 .custom-select-trigger:hover,
 .custom-select-trigger:focus {
@@ -750,13 +753,13 @@ button svg {
   right: 0;
   width: 100%;
   max-width: 100%;
-  max-height: 340px;
+  max-height: 260px;
   overflow-y: auto;
   background-color: var(--surface-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
-  z-index: 100;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.22);
+  z-index: 250;
   box-sizing: border-box;
 }
 
@@ -1514,7 +1517,7 @@ textarea.form-control {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   padding: 10px 0;
   border-top: 1px solid var(--border-color);
   margin-bottom: 12px;
@@ -1525,6 +1528,46 @@ textarea.form-control {
   font-weight: 600;
   color: var(--text-muted);
   margin-right: 2px;
+}
+
+.time-stepper {
+  display: inline-flex;
+  align-items: center;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  height: 34px;
+}
+
+.stepper-btn {
+  background: var(--surface-card);
+  border: none;
+  width: 28px;
+  height: 100%;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+
+.stepper-btn:hover {
+  background-color: var(--surface-hover);
+  color: var(--primary);
+}
+
+.stepper-val {
+  min-width: 26px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 0 4px;
+  user-select: none;
 }
 
 .custom-dt-ampm-toggle {
