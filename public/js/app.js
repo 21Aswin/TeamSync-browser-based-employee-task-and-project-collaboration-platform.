@@ -358,7 +358,7 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     CUSTOM IN-DOM DATE-TIME PICKER (Fits 100% inside mobile screen)
+     CUSTOM IN-DOM DATE & TIME PICKER (WITH SCROLLABLE WHEEL & MONTH-YEAR PICKER)
      ------------------------------------------------------------- */
   pickerState: {
     targetId: null,
@@ -366,9 +366,10 @@ const App = {
     year: new Date().getFullYear(),
     month: new Date().getMonth(),
     selectedDate: null,
-    hour: 9,
+    hour: 10,
     minute: 0,
-    ampm: 'AM'
+    ampm: 'AM',
+    showMonthYearView: false
   },
 
   openDateTimePicker(targetId, label = 'Select Date & Time') {
@@ -376,6 +377,7 @@ const App = {
     document.querySelectorAll('.custom-select-wrapper.is-open').forEach((w) => w.classList.remove('is-open'));
     this.pickerState.targetId = targetId;
     this.pickerState.targetLabel = label;
+    this.pickerState.showMonthYearView = false;
 
     const currentVal = document.getElementById(targetId)?.value || '';
     if (currentVal) {
@@ -428,13 +430,20 @@ const App = {
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
-    const { year, month, selectedDate, hour, minute, ampm } = this.pickerState;
+    const { year, month, selectedDate, hour, minute, ampm, showMonthYearView } = this.pickerState;
 
     const firstDayIndex = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const today = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+    // Available years for scrolling selector (from 2022 to 2035)
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let y = currentYear - 3; y <= currentYear + 10; y++) {
+      years.push(y);
+    }
 
     let daysHtml = '';
     for (let i = 0; i < firstDayIndex; i++) {
@@ -455,52 +464,92 @@ const App = {
       `;
     }
 
-    let hoursHtml = '';
-    for (let h = 1; h <= 12; h++) {
-      hoursHtml += `<option value="${h}" ${h === hour ? 'selected' : ''}>${pad(h)}</option>`;
-    }
-
-    let minutesHtml = '';
-    for (let m = 0; m < 60; m += 5) {
-      minutesHtml += `<option value="${m}" ${m === minute ? 'selected' : ''}>${pad(m)}</option>`;
-    }
+    const hoursList = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const minutesList = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
 
     modal.innerHTML = `
       <div class="custom-dt-dialog card" onclick="event.stopPropagation()">
+        <!-- Header: Month & Year Selector Trigger -->
         <div class="custom-dt-header">
-          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(-1)">‹</button>
-          <div class="custom-dt-month-year">${months[month]} ${year}</div>
-          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(1)">›</button>
+          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(-1)" title="Previous Month">‹</button>
+          <button type="button" class="custom-dt-month-year-btn ${showMonthYearView ? 'open' : ''}" onclick="App.togglePickerMonthYearView()" title="Click to choose Month & Year">
+            <span>${months[month]} ${year}</span>
+            <svg style="width:12px;height:12px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(1)" title="Next Month">›</button>
         </div>
 
-        <div class="custom-dt-calendar-grid">
-          <div class="custom-dt-day-name">Su</div>
-          <div class="custom-dt-day-name">Mo</div>
-          <div class="custom-dt-day-name">Tu</div>
-          <div class="custom-dt-day-name">We</div>
-          <div class="custom-dt-day-name">Th</div>
-          <div class="custom-dt-day-name">Fr</div>
-          <div class="custom-dt-day-name">Sa</div>
-          ${daysHtml}
-        </div>
+        ${showMonthYearView ? `
+          <!-- Scrollable Month & Year Selection Panel -->
+          <div class="custom-dt-my-panel">
+            <div class="custom-dt-my-col" id="picker-months-list">
+              ${months.map((mName, mIdx) => `
+                <div class="custom-dt-my-item ${mIdx === month ? 'selected' : ''}" data-month="${mIdx}" onclick="App.selectPickerMonth(${mIdx})">
+                  ${mName}
+                </div>
+              `).join('')}
+            </div>
+            <div class="custom-dt-my-col" id="picker-years-list">
+              ${years.map(y => `
+                <div class="custom-dt-my-item ${y === year ? 'selected' : ''}" data-year="${y}" onclick="App.selectPickerYear(${y})">
+                  ${y}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" style="width:100%;margin-bottom:12px;" onclick="App.togglePickerMonthYearView(false)">
+            ✓ Done (View Calendar Days)
+          </button>
+        ` : `
+          <!-- Calendar Days Grid -->
+          <div class="custom-dt-calendar-grid">
+            <div class="custom-dt-day-name">Su</div>
+            <div class="custom-dt-day-name">Mo</div>
+            <div class="custom-dt-day-name">Tu</div>
+            <div class="custom-dt-day-name">We</div>
+            <div class="custom-dt-day-name">Th</div>
+            <div class="custom-dt-day-name">Fr</div>
+            <div class="custom-dt-day-name">Sa</div>
+            ${daysHtml}
+          </div>
+        `}
 
+        <!-- Scrollable Time Drum & Single AM/PM Toggle Button -->
         <div class="custom-dt-time-wrap">
           <span class="custom-dt-time-label">Time:</span>
-          <div class="time-stepper">
-            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('hour', -1)">−</button>
-            <span class="stepper-val" id="custom-dt-hour-val">${pad(hour)}</span>
-            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('hour', 1)">+</button>
+
+          <!-- Scrollable Hour Drum -->
+          <div class="time-wheel-container" title="Scroll or tap hour">
+            <div class="time-wheel-fade top"></div>
+            <div class="time-wheel" id="picker-hour-wheel" onscroll="App.onTimeWheelScroll('hour')">
+              ${hoursList.map(h => `
+                <div class="time-wheel-item ${h === hour ? 'selected' : ''}" data-val="${h}" onclick="App.selectPickerTimeItem('hour', ${h})">
+                  ${pad(h)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="time-wheel-fade bottom"></div>
           </div>
-          <span style="font-weight:700;color:var(--text-muted);">:</span>
-          <div class="time-stepper">
-            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('min', -5)">−</button>
-            <span class="stepper-val" id="custom-dt-min-val">${pad(minute)}</span>
-            <button type="button" class="stepper-btn" onclick="App.stepPickerTime('min', 5)">+</button>
+
+          <span class="time-colon">:</span>
+
+          <!-- Scrollable Minute Drum -->
+          <div class="time-wheel-container" title="Scroll or tap minute">
+            <div class="time-wheel-fade top"></div>
+            <div class="time-wheel" id="picker-min-wheel" onscroll="App.onTimeWheelScroll('min')">
+              ${minutesList.map(m => `
+                <div class="time-wheel-item ${m === minute ? 'selected' : ''}" data-val="${m}" onclick="App.selectPickerTimeItem('min', ${m})">
+                  ${pad(m)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="time-wheel-fade bottom"></div>
           </div>
-          <div class="custom-dt-ampm-toggle">
-            <button type="button" class="ampm-btn ${ampm === 'AM' ? 'active' : ''}" onclick="App.setPickerAmPm('AM')">AM</button>
-            <button type="button" class="ampm-btn ${ampm === 'PM' ? 'active' : ''}" onclick="App.setPickerAmPm('PM')">PM</button>
-          </div>
+
+          <!-- Single Click AM/PM Toggle Button -->
+          <button type="button" id="custom-dt-ampm-single-btn" class="ampm-single-btn ${ampm === 'PM' ? 'pm' : ''}" onclick="App.togglePickerAmPm()" title="Click to toggle between AM and PM">
+            ${ampm}
+          </button>
         </div>
 
         <div class="custom-dt-actions">
@@ -513,6 +562,43 @@ const App = {
     modal.onclick = (e) => {
       if (e.target === modal) App.closeCustomDateTimePicker();
     };
+
+    // Scroll time wheels and month/year lists into view
+    setTimeout(() => {
+      this.scrollTimeWheelToCurrent('hour');
+      this.scrollTimeWheelToCurrent('min');
+      if (this.pickerState.showMonthYearView) {
+        this.scrollMonthYearIntoView();
+      }
+    }, 25);
+  },
+
+  togglePickerMonthYearView(forceState = null) {
+    this.pickerState.showMonthYearView = forceState !== null ? forceState : !this.pickerState.showMonthYearView;
+    this.renderCustomDateTimePicker();
+  },
+
+  selectPickerMonth(m) {
+    this.pickerState.month = m;
+    this.renderCustomDateTimePicker();
+  },
+
+  selectPickerYear(y) {
+    this.pickerState.year = y;
+    this.renderCustomDateTimePicker();
+  },
+
+  scrollMonthYearIntoView() {
+    const mList = document.getElementById('picker-months-list');
+    const yList = document.getElementById('picker-years-list');
+    if (mList) {
+      const selM = mList.querySelector('.custom-dt-my-item.selected');
+      if (selM) selM.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    if (yList) {
+      const selY = yList.querySelector('.custom-dt-my-item.selected');
+      if (selY) selY.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
   },
 
   changePickerMonth(delta) {
@@ -530,36 +616,79 @@ const App = {
     this.renderCustomDateTimePicker();
   },
 
-  stepPickerTime(type, step) {
-    if (type === 'hour') {
-      let h = this.pickerState.hour + step;
-      if (h < 1) h = 12;
-      if (h > 12) h = 1;
-      this.pickerState.hour = h;
-      const el = document.getElementById('custom-dt-hour-val');
-      if (el) el.textContent = String(h).padStart(2, '0');
-    } else if (type === 'min') {
-      let m = this.pickerState.minute + step;
-      if (m < 0) m = 55;
-      if (m >= 60) m = 0;
-      this.pickerState.minute = m;
-      const el = document.getElementById('custom-dt-min-val');
-      if (el) el.textContent = String(m).padStart(2, '0');
-    }
-  },
-
   selectPickerDay(dateStr) {
     this.pickerState.selectedDate = dateStr;
     this.renderCustomDateTimePicker();
   },
 
-  setPickerAmPm(ampm) {
-    this.pickerState.ampm = ampm;
-    const amBtn = document.querySelector('.ampm-btn:first-child');
-    const pmBtn = document.querySelector('.ampm-btn:last-child');
-    if (amBtn && pmBtn) {
-      amBtn.classList.toggle('active', ampm === 'AM');
-      pmBtn.classList.toggle('active', ampm === 'PM');
+  selectPickerTimeItem(type, val) {
+    if (type === 'hour') {
+      this.pickerState.hour = val;
+    } else {
+      this.pickerState.minute = val;
+    }
+    this.updateTimeWheelSelection(type, val);
+  },
+
+  updateTimeWheelSelection(type, val) {
+    const wheelId = type === 'hour' ? 'picker-hour-wheel' : 'picker-min-wheel';
+    const wheel = document.getElementById(wheelId);
+    if (!wheel) return;
+    wheel.querySelectorAll('.time-wheel-item').forEach(it => {
+      const isSel = parseInt(it.getAttribute('data-val'), 10) === val;
+      it.classList.toggle('selected', isSel);
+      if (isSel) {
+        const top = it.offsetTop - (wheel.clientHeight / 2) + (it.clientHeight / 2);
+        wheel.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  },
+
+  onTimeWheelScroll(type) {
+    clearTimeout(this['_wheelTimeout_' + type]);
+    this['_wheelTimeout_' + type] = setTimeout(() => {
+      const wheelId = type === 'hour' ? 'picker-hour-wheel' : 'picker-min-wheel';
+      const wheel = document.getElementById(wheelId);
+      if (!wheel) return;
+      const centerY = wheel.scrollTop + (wheel.clientHeight / 2);
+      const items = Array.from(wheel.querySelectorAll('.time-wheel-item'));
+      let closest = null;
+      let minDiff = Infinity;
+      items.forEach(it => {
+        const itCenter = it.offsetTop + (it.clientHeight / 2);
+        const diff = Math.abs(itCenter - centerY);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = it;
+        }
+      });
+      if (closest) {
+        const val = parseInt(closest.getAttribute('data-val'), 10);
+        if (type === 'hour') this.pickerState.hour = val;
+        else this.pickerState.minute = val;
+        items.forEach(it => it.classList.toggle('selected', it === closest));
+      }
+    }, 70);
+  },
+
+  scrollTimeWheelToCurrent(type) {
+    const val = type === 'hour' ? this.pickerState.hour : this.pickerState.minute;
+    const wheelId = type === 'hour' ? 'picker-hour-wheel' : 'picker-min-wheel';
+    const wheel = document.getElementById(wheelId);
+    if (!wheel) return;
+    const item = wheel.querySelector(`.time-wheel-item[data-val="${val}"]`);
+    if (item) {
+      const top = item.offsetTop - (wheel.clientHeight / 2) + (item.clientHeight / 2);
+      wheel.scrollTop = top;
+    }
+  },
+
+  togglePickerAmPm() {
+    this.pickerState.ampm = this.pickerState.ampm === 'AM' ? 'PM' : 'AM';
+    const btn = document.getElementById('custom-dt-ampm-single-btn');
+    if (btn) {
+      btn.textContent = this.pickerState.ampm;
+      btn.classList.toggle('pm', this.pickerState.ampm === 'PM');
     }
   },
 

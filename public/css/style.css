@@ -1457,11 +1457,87 @@ textarea.form-control {
   margin-bottom: 12px;
 }
 
+.custom-dt-month-year-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.custom-dt-month-year-btn:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.custom-dt-month-year-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.custom-dt-month-year-btn.open svg {
+  transform: rotate(180deg);
+}
+
 .custom-dt-month-year {
   font-weight: 700;
   font-size: 15px;
   color: var(--text-main);
   text-align: center;
+}
+
+/* Scrollable Month & Year Selection Panel */
+.custom-dt-my-panel {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  background: var(--surface-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px;
+}
+
+.custom-dt-my-col {
+  flex: 1;
+  max-height: 190px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-card);
+  border: 1px solid var(--border-color);
+  padding: 4px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.custom-dt-my-item {
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.custom-dt-my-item:hover {
+  background-color: var(--surface-hover);
+  color: var(--primary);
+}
+
+.custom-dt-my-item.selected {
+  background-color: var(--primary);
+  color: #fff;
+  font-weight: 700;
 }
 
 .custom-dt-calendar-grid {
@@ -1530,67 +1606,113 @@ textarea.form-control {
   margin-right: 2px;
 }
 
-.time-stepper {
-  display: inline-flex;
-  align-items: center;
-  background-color: var(--surface-card);
+.time-wheel-container {
+  position: relative;
+  width: 58px;
+  height: 68px;
+  background: var(--surface-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
-  height: 34px;
+  box-sizing: border-box;
 }
 
-.stepper-btn {
-  background: var(--surface-card);
-  border: none;
-  width: 28px;
+.time-wheel {
   height: 100%;
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-muted);
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 18px 0;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.time-wheel::-webkit-scrollbar {
+  display: none;
+}
+
+.time-wheel-item {
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  scroll-snap-align: center;
+  cursor: pointer;
+  user-select: none;
   transition: all 0.12s ease;
 }
 
-.stepper-btn:hover {
+.time-wheel-item:hover {
+  color: var(--text-main);
   background-color: var(--surface-hover);
-  color: var(--primary);
 }
 
-.stepper-val {
-  min-width: 26px;
-  text-align: center;
+.time-wheel-item.selected {
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 800;
+  background: rgba(14, 116, 144, 0.12);
+}
+
+.time-wheel-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 18px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.time-wheel-fade.top {
+  top: 0;
+  background: linear-gradient(to bottom, var(--surface-card), rgba(255, 255, 255, 0));
+}
+
+.time-wheel-fade.bottom {
+  bottom: 0;
+  background: linear-gradient(to top, var(--surface-card), rgba(255, 255, 255, 0));
+}
+
+.time-colon {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.ampm-single-btn {
+  height: 38px;
+  min-width: 54px;
+  padding: 0 12px;
   font-size: 13px;
   font-weight: 700;
-  color: var(--text-main);
-  padding: 0 4px;
-  user-select: none;
-}
-
-.custom-dt-ampm-toggle {
-  display: inline-flex;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-}
-
-.ampm-btn {
-  padding: 6px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--surface-card);
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  transition: all 0.15s ease;
-}
-
-.ampm-btn.active {
   background-color: var(--primary);
   color: #fff;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+  box-shadow: var(--shadow-sm);
+}
+
+.ampm-single-btn:hover {
+  filter: brightness(1.1);
+}
+
+.ampm-single-btn:active {
+  transform: scale(0.96);
+}
+
+.ampm-single-btn.pm {
+  background-color: var(--secondary);
+  border-color: var(--secondary);
 }
 
 .custom-dt-actions {
