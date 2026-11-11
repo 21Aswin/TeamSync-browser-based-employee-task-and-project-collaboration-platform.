@@ -573,6 +573,26 @@ button svg {
   min-width: 0;
 }
 
+.page-filter-group input {
+  flex: 1;
+  min-width: 180px;
+  box-sizing: border-box;
+}
+
+.page-filter-group select {
+  width: 160px;
+  box-sizing: border-box;
+}
+
+/* 2-Column Form Row (Stacks vertically on mobile) */
+.form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Stat Grid */
 .stat-grid {
   display: grid;
@@ -1016,6 +1036,20 @@ button svg {
   color: var(--text-main);
   outline: none;
   transition: all 0.15s ease;
+  box-sizing: border-box;
+  max-width: 100%;
+  min-width: 0;
+}
+
+input[type="datetime-local"].form-control,
+input[type="date"].form-control {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 38px;
+  display: block;
+  background-color: var(--surface-card);
 }
 
 .form-control:focus {
@@ -1258,59 +1292,116 @@ textarea.form-control {
 
   /* Universal Page Header & Filter Bars on Mobile */
   .page-header-bar {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
-    gap: 12px !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .page-filter-group {
+    display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
     width: 100% !important;
     gap: 8px !important;
+    box-sizing: border-box !important;
   }
 
   .page-filter-group input,
   .page-filter-group select {
     width: 100% !important;
+    min-width: 100% !important;
     max-width: 100% !important;
+    box-sizing: border-box !important;
+    flex: none !important;
+    margin: 0 !important;
   }
 
   .page-header-bar > .btn,
   .page-header-bar > button {
     width: 100% !important;
     justify-content: center !important;
+    box-sizing: border-box !important;
   }
 
-  /* Form Grids Inside Modals on Mobile */
-  .modal-body div[style*="grid-template-columns"] {
+  /* Form Controls on Mobile: 16px Font Prevents Auto-Zoom */
+  .form-control,
+  input.form-control,
+  select.form-control,
+  textarea.form-control {
+    font-size: 16px !important;
+    height: 42px;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  textarea.form-control {
+    height: auto;
+    min-height: 80px;
+  }
+
+  /* Date & Time Inputs on Mobile: Full Width, No Bleed */
+  input[type="datetime-local"].form-control,
+  input[type="date"].form-control {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    height: 42px !important;
+    display: block !important;
+  }
+
+  /* Form Grids Inside Modals: Stack vertically (kela kela) on Mobile */
+  .form-row-2col,
+  .modal-body .form-row-2col,
+  .modal-body div[style*="grid-template-columns"],
+  .modal-dialog div[style*="grid-template-columns"] {
+    display: flex !important;
+    flex-direction: column !important;
     grid-template-columns: 1fr !important;
-    gap: 8px !important;
+    gap: 10px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   /* Modals on Mobile: Full Width Bottom-Sheet */
   .modal-backdrop {
     padding: 0;
     align-items: flex-end;
+    overflow-x: hidden;
   }
 
   .modal-dialog {
     width: 100% !important;
     max-width: 100% !important;
-    max-height: 94vh;
+    max-height: 90vh;
+    max-height: 90dvh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     margin: 0;
+    box-sizing: border-box !important;
+    overflow-x: hidden;
   }
 
   .modal-header {
     padding: 12px 16px;
+    flex-shrink: 0;
   }
 
   .modal-body {
     padding: 14px 16px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
   }
 
   .modal-footer {
     padding: 10px 16px;
+    flex-shrink: 0;
   }
 }

@@ -561,8 +561,8 @@ const App = {
     container.innerHTML = `
       <div class="page-header-bar">
         <div class="page-filter-group">
-          <input type="text" id="project-search-input" class="form-control" style="flex:1;min-width:200px;" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
-          <select id="project-status-filter" class="form-control" style="width:160px;" onchange="App.projectsPage=1; App.filterProjects()">
+          <input type="text" id="project-search-input" class="form-control" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
+          <select id="project-status-filter" class="form-control" onchange="App.projectsPage=1; App.filterProjects()">
             <option value="">All Statuses</option>
             <option value="PLANNING">Planning</option>
             <option value="ACTIVE">Active</option>
@@ -913,7 +913,7 @@ const App = {
                 <label class="form-label">Description</label>
                 <textarea id="edit-proj-desc" class="form-control">${project.description || ''}</textarea>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Status</label>
                   <select id="edit-proj-status" class="form-control">
@@ -1275,7 +1275,7 @@ const App = {
             <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;">${task.title}</h2>
             <p style="font-size:13px;color:var(--text-main);margin-bottom:16px;white-space:pre-wrap;">${task.description || 'No description provided.'}</p>
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--surface-secondary);padding:12px;border-radius:var(--radius-md);margin-bottom:20px;border:1px solid var(--border-color);">
+            <div class="form-row-2col" style="background:var(--surface-secondary);padding:12px;border-radius:var(--radius-md);margin-bottom:20px;border:1px solid var(--border-color);">
               <div>
                 <div style="font-size:11px;color:var(--text-muted);">Assignee</div>
                 <div style="font-weight:600;font-size:13px;">${task.assignee_name || 'Unassigned'}</div>
@@ -1415,7 +1415,7 @@ const App = {
                 <label class="form-label">Description</label>
                 <textarea id="edit-task-desc" class="form-control">${task.description || ''}</textarea>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Priority</label>
                   <select id="edit-task-priority" class="form-control">
@@ -1435,7 +1435,7 @@ const App = {
                   </select>
                 </div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Start Date & Time</label>
                   <input type="datetime-local" id="edit-task-start" class="form-control" value="${App.formatInputDateTime(task.start_date)}">
@@ -1511,7 +1511,7 @@ const App = {
               <label class="form-label">Description</label>
               <textarea id="new-proj-desc" class="form-control" placeholder="Brief project summary..."></textarea>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
                 <input type="datetime-local" id="new-proj-start" class="form-control">
@@ -1618,7 +1618,7 @@ const App = {
               <label class="form-label">Description</label>
               <textarea id="new-task-desc" class="form-control" placeholder="Detailed requirements and context..."></textarea>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Priority</label>
                 <select id="new-task-priority" class="form-control">
@@ -1638,7 +1638,7 @@ const App = {
                 </select>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
                 <input type="datetime-local" id="new-task-start" class="form-control">
@@ -1702,7 +1702,7 @@ const App = {
     container.innerHTML = `
       <div class="page-header-bar">
         <div class="page-filter-group">
-          <input type="text" id="emp-search" class="form-control" style="flex:1;min-width:200px;" placeholder="Search employees..." oninput="App.employeesPage=1; App.loadEmployees()">
+          <input type="text" id="emp-search" class="form-control" placeholder="Search employees..." oninput="App.employeesPage=1; App.loadEmployees()">
         </div>
         <button class="btn btn-primary" onclick="App.openCreateEmployeeModal()">
           <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
@@ -1848,7 +1848,7 @@ const App = {
                 </button>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Role <span class="req">*</span></label>
                 <select id="new-emp-role" class="form-control" required>
@@ -1923,7 +1923,7 @@ const App = {
                 <label class="form-label">Full Name <span class="req">*</span></label>
                 <input type="text" id="edit-emp-name" class="form-control" value="${user.name}" required>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Role <span class="req">*</span></label>
                   <select id="edit-emp-role" class="form-control" required>
