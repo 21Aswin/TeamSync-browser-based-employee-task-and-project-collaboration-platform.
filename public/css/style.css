@@ -707,14 +707,20 @@ button svg {
   position: relative;
 }
 
-/* Custom Responsive Project Dropdown (Line-by-Line Full Text) */
+/* Custom Responsive Project Dropdown & Status Selects (Line-by-Line Full Text, strictly inside phone body) */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .custom-select-trigger {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  min-height: 44px;
+  min-height: 38px;
   padding: 8px 12px;
   background-color: var(--surface-card);
   border: 1px solid var(--border-color);
@@ -724,6 +730,9 @@ button svg {
   transition: all 0.15s ease;
   user-select: none;
   box-sizing: border-box;
+  font-size: 13px;
+  color: var(--text-main);
+}
 }
 
 .custom-select-trigger:hover,
@@ -1042,7 +1051,8 @@ button svg {
 }
 
 input[type="datetime-local"].form-control,
-input[type="date"].form-control {
+input[type="date"].form-control,
+input[type="time"].form-control {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -1345,13 +1355,15 @@ textarea.form-control {
 
   /* Date & Time Inputs on Mobile: Full Width, No Bleed */
   input[type="datetime-local"].form-control,
-  input[type="date"].form-control {
+  input[type="date"].form-control,
+  input[type="time"].form-control {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     box-sizing: border-box !important;
     height: 42px !important;
     display: block !important;
+    padding: 0 8px !important;
   }
 
   /* Form Grids Inside Modals: Stack vertically (kela kela) on Mobile */

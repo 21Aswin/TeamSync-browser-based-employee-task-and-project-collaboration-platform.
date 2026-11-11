@@ -91,6 +91,13 @@ const App = {
       if (projDropdown && projDropdown.classList.contains('show') && projTrigger && !projTrigger.contains(e.target) && !projDropdown.contains(e.target)) {
         projDropdown.classList.remove('show');
       }
+
+      // Close project status dropdown when clicking outside
+      const statusDropdown = document.getElementById('project-status-dropdown');
+      const statusTrigger = document.getElementById('project-status-btn');
+      if (statusDropdown && statusDropdown.classList.contains('show') && statusTrigger && !statusTrigger.contains(e.target) && !statusDropdown.contains(e.target)) {
+        statusDropdown.classList.remove('show');
+      }
     });
 
     // Close sidebar & dropdowns on Escape key
@@ -318,6 +325,36 @@ const App = {
     const hours = pad(d.getHours());
     const minutes = pad(d.getMinutes());
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  },
+
+  combineDateTime(dateStr, timeStr) {
+    if (!dateStr || !dateStr.trim()) return null;
+    const time = (timeStr && timeStr.trim()) ? timeStr.trim() : '00:00';
+    return `${dateStr.trim()}T${time}`;
+  },
+
+  splitDateTime(val) {
+    if (!val) return { date: '', time: '' };
+    if (typeof val === 'string') {
+      const clean = val.replace('Z', '').trim();
+      const parts = clean.split(/[T ]/);
+      if (parts.length >= 2 && parts[0].includes('-')) {
+        return { date: parts[0], time: parts[1].substring(0, 5) };
+      }
+      if (parts.length === 1 && parts[0].includes('-')) {
+        return { date: parts[0], time: '09:00' };
+      }
+    }
+    try {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return { date: '', time: '' };
+      const pad = (n) => String(n).padStart(2, '0');
+      const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      return { date, time };
+    } catch (e) {
+      return { date: '', time: '' };
+    }
   },
 
   /* -------------------------------------------------------------
@@ -562,13 +599,32 @@ const App = {
       <div class="page-header-bar">
         <div class="page-filter-group">
           <input type="text" id="project-search-input" class="form-control" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
-          <select id="project-status-filter" class="form-control" onchange="App.projectsPage=1; App.filterProjects()">
-            <option value="">All Statuses</option>
-            <option value="PLANNING">Planning</option>
-            <option value="ACTIVE">Active</option>
-            <option value="ON_HOLD">On Hold</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
+          
+          <!-- Custom In-DOM Status Dropdown: Stays strictly inside phone body -->
+          <div class="custom-select-wrapper" id="project-status-wrapper">
+            <button type="button" id="project-status-btn" class="custom-select-trigger" onclick="App.toggleProjectStatusDropdown(event)">
+              <span id="project-status-text">All Statuses</span>
+              <svg style="width:16px;height:16px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+            <div id="project-status-dropdown" class="custom-select-dropdown">
+              <div class="custom-select-option selected" data-value="" onclick="App.selectProjectStatus('', 'All Statuses')">
+                <span>All Statuses</span>
+              </div>
+              <div class="custom-select-option" data-value="PLANNING" onclick="App.selectProjectStatus('PLANNING', 'Planning')">
+                <span class="badge status-PLANNING" style="margin-right:6px;">Planning</span>
+              </div>
+              <div class="custom-select-option" data-value="ACTIVE" onclick="App.selectProjectStatus('ACTIVE', 'Active')">
+                <span class="badge status-ACTIVE" style="margin-right:6px;">Active</span>
+              </div>
+              <div class="custom-select-option" data-value="ON_HOLD" onclick="App.selectProjectStatus('ON_HOLD', 'On Hold')">
+                <span class="badge status-ON_HOLD" style="margin-right:6px;">On Hold</span>
+              </div>
+              <div class="custom-select-option" data-value="COMPLETED" onclick="App.selectProjectStatus('COMPLETED', 'Completed')">
+                <span class="badge status-COMPLETED" style="margin-right:6px;">Completed</span>
+              </div>
+            </div>
+            <input type="hidden" id="project-status-filter" value="">
+          </div>
         </div>
         ${this.currentUser.role_key !== 'EMPLOYEE' ? `
           <button class="btn btn-primary" onclick="App.openCreateProjectModal()">
@@ -583,6 +639,28 @@ const App = {
       <div id="projects-pagination-container"></div>
     `;
 
+    this.filterProjects();
+  },
+
+  toggleProjectStatusDropdown(e) {
+    if (e) e.stopPropagation();
+    const dd = document.getElementById('project-status-dropdown');
+    if (dd) dd.classList.toggle('show');
+  },
+
+  selectProjectStatus(val, label) {
+    const hiddenInput = document.getElementById('project-status-filter');
+    const labelEl = document.getElementById('project-status-text');
+    const dd = document.getElementById('project-status-dropdown');
+    if (hiddenInput) hiddenInput.value = val;
+    if (labelEl) labelEl.textContent = label;
+    if (dd) {
+      dd.classList.remove('show');
+      dd.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.getAttribute('data-value') === val);
+      });
+    }
+    this.projectsPage = 1;
     this.filterProjects();
   },
 
@@ -897,6 +975,7 @@ const App = {
     modal.classList.add('show');
     try {
       const project = await API.getProject(projectId);
+      const dueParts = App.splitDateTime(project.due_date);
       modal.innerHTML = `
         <div class="modal-dialog">
           <div class="modal-header">
@@ -925,7 +1004,10 @@ const App = {
                 </div>
                 <div class="form-group">
                   <label class="form-label">Due Date & Time</label>
-                  <input type="datetime-local" id="edit-proj-due" class="form-control" value="${App.formatInputDateTime(project.due_date)}">
+                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                    <input type="date" id="edit-proj-due-date" class="form-control" value="${dueParts.date}" title="Due Date">
+                    <input type="time" id="edit-proj-due-time" class="form-control" value="${dueParts.time}" title="Due Time">
+                  </div>
                 </div>
               </div>
             </div>
@@ -949,7 +1031,10 @@ const App = {
     const name = document.getElementById('edit-proj-name').value;
     const description = document.getElementById('edit-proj-desc').value;
     const status = document.getElementById('edit-proj-status').value;
-    const due_date = document.getElementById('edit-proj-due').value || null;
+    const due_date = App.combineDateTime(
+      document.getElementById('edit-proj-due-date')?.value,
+      document.getElementById('edit-proj-due-time')?.value
+    );
 
     try {
       await API.updateProject(projectId, { name, description, status, due_date });
@@ -1398,6 +1483,8 @@ const App = {
       const task = await API.getTask(taskId);
       const proj = await API.getProject(task.project_id);
       const members = proj.members || [];
+      const startParts = App.splitDateTime(task.start_date);
+      const dueParts = App.splitDateTime(task.due_date);
 
       modal.innerHTML = `
         <div class="modal-dialog">
@@ -1438,11 +1525,17 @@ const App = {
               <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Start Date & Time</label>
-                  <input type="datetime-local" id="edit-task-start" class="form-control" value="${App.formatInputDateTime(task.start_date)}">
+                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                    <input type="date" id="edit-task-start-date" class="form-control" value="${startParts.date}" title="Start Date">
+                    <input type="time" id="edit-task-start-time" class="form-control" value="${startParts.time}" title="Start Time">
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Due Date & Time</label>
-                  <input type="datetime-local" id="edit-task-due" class="form-control" value="${App.formatInputDateTime(task.due_date)}">
+                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                    <input type="date" id="edit-task-due-date" class="form-control" value="${dueParts.date}" title="Due Date">
+                    <input type="time" id="edit-task-due-time" class="form-control" value="${dueParts.time}" title="Due Time">
+                  </div>
                 </div>
               </div>
             </div>
@@ -1467,8 +1560,14 @@ const App = {
     const description = document.getElementById('edit-task-desc').value;
     const priority = document.getElementById('edit-task-priority').value;
     const assigneeId = document.getElementById('edit-task-assignee').value || null;
-    const startDate = document.getElementById('edit-task-start').value || null;
-    const dueDate = document.getElementById('edit-task-due').value || null;
+    const startDate = App.combineDateTime(
+      document.getElementById('edit-task-start-date')?.value,
+      document.getElementById('edit-task-start-time')?.value
+    );
+    const dueDate = App.combineDateTime(
+      document.getElementById('edit-task-due-date')?.value,
+      document.getElementById('edit-task-due-time')?.value
+    );
 
     try {
       await API.updateTask(taskId, { title, description, priority, assigneeId, startDate, dueDate });
@@ -1514,11 +1613,17 @@ const App = {
             <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
-                <input type="datetime-local" id="new-proj-start" class="form-control">
+                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                  <input type="date" id="new-proj-start-date" class="form-control" title="Start Date">
+                  <input type="time" id="new-proj-start-time" class="form-control" title="Start Time">
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Due Date & Time</label>
-                <input type="datetime-local" id="new-proj-due" class="form-control">
+                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                  <input type="date" id="new-proj-due-date" class="form-control" title="Due Date">
+                  <input type="time" id="new-proj-due-time" class="form-control" title="Due Time">
+                </div>
               </div>
             </div>
             <div class="form-group">
@@ -1555,8 +1660,14 @@ const App = {
     const name = document.getElementById('new-proj-name').value;
     const project_code = document.getElementById('new-proj-code').value;
     const description = document.getElementById('new-proj-desc').value;
-    const start_date = document.getElementById('new-proj-start').value || null;
-    const due_date = document.getElementById('new-proj-due').value || null;
+    const start_date = App.combineDateTime(
+      document.getElementById('new-proj-start-date')?.value,
+      document.getElementById('new-proj-start-time')?.value
+    );
+    const due_date = App.combineDateTime(
+      document.getElementById('new-proj-due-date')?.value,
+      document.getElementById('new-proj-due-time')?.value
+    );
 
     const member_ids = Array.from(document.querySelectorAll('input[name="proj_members"]:checked')).map(cb => parseInt(cb.value, 10));
 
@@ -1641,11 +1752,17 @@ const App = {
             <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
-                <input type="datetime-local" id="new-task-start" class="form-control">
+                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                  <input type="date" id="new-task-start-date" class="form-control" title="Start Date">
+                  <input type="time" id="new-task-start-time" class="form-control" title="Start Time">
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Due Date & Time</label>
-                <input type="datetime-local" id="new-task-due" class="form-control">
+                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
+                  <input type="date" id="new-task-due-date" class="form-control" title="Due Date">
+                  <input type="time" id="new-task-due-time" class="form-control" title="Due Time">
+                </div>
               </div>
             </div>
           </div>
@@ -1681,8 +1798,14 @@ const App = {
     const description = document.getElementById('new-task-desc').value;
     const priority = document.getElementById('new-task-priority').value;
     const assigneeId = document.getElementById('new-task-assignee').value || null;
-    const startDate = document.getElementById('new-task-start').value || null;
-    const dueDate = document.getElementById('new-task-due').value || null;
+    const startDate = App.combineDateTime(
+      document.getElementById('new-task-start-date')?.value,
+      document.getElementById('new-task-start-time')?.value
+    );
+    const dueDate = App.combineDateTime(
+      document.getElementById('new-task-due-date')?.value,
+      document.getElementById('new-task-due-time')?.value
+    );
 
     try {
       await API.createTask(projectId, { title, description, priority, assigneeId, startDate, dueDate });
