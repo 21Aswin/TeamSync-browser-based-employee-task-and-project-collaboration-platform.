@@ -77,19 +77,27 @@ const App = {
       }
     }, 10000);
 
-    // Close notifications popover when clicking anywhere outside
+    // Close notifications & custom dropdowns when clicking anywhere outside
     document.addEventListener('click', (e) => {
       const dropdown = document.getElementById('notif-dropdown');
       const wrapper = document.querySelector('.notif-btn-wrapper');
       if (dropdown && dropdown.classList.contains('show') && wrapper && !wrapper.contains(e.target)) {
         dropdown.classList.remove('show');
       }
+
+      // Close kanban project dropdown when clicking outside
+      const projDropdown = document.getElementById('kanban-project-dropdown');
+      const projTrigger = document.getElementById('kanban-project-picker-btn');
+      if (projDropdown && projDropdown.classList.contains('show') && projTrigger && !projTrigger.contains(e.target) && !projDropdown.contains(e.target)) {
+        projDropdown.classList.remove('show');
+      }
     });
 
-    // Close sidebar on Escape key
+    // Close sidebar & dropdowns on Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeSidebar();
+        document.getElementById('kanban-project-dropdown')?.classList.remove('show');
       }
     });
   },
@@ -963,17 +971,45 @@ const App = {
     const projects = projectsRes.data || [];
 
     const selectedProjectId = projectIdFilter || (projects.length > 0 ? projects[0].id : null);
+    const activeProject = projects.find(p => p.id == selectedProjectId) || (projects.length > 0 ? projects[0] : null);
 
     container.innerHTML = `
       <div class="kanban-header-bar">
         <div class="kanban-filter-group">
-          <div class="kanban-select-wrapper">
-            <label for="kanban-project-select" style="font-size:13px;font-weight:600;white-space:nowrap;">Project:</label>
-            <select id="kanban-project-select" class="form-control" onchange="App.navigate('kanban/' + this.value)">
-              ${projects.map(p => {
-                const shortName = p.name.length > 25 ? p.name.substring(0, 24) + '…' : p.name;
-                return `<option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''} title="${p.name}">${p.project_code} — ${shortName}</option>`;
-              }).join('')}
+          <div class="kanban-select-wrapper" style="position:relative;">
+            <label style="font-size:13px;font-weight:600;white-space:nowrap;">Project:</label>
+
+            <!-- Custom Mobile-Responsive Project Picker (Wraps full project name line-by-line) -->
+            <button type="button" id="kanban-project-picker-btn" class="custom-select-trigger" onclick="App.toggleKanbanProjectDropdown(event)" title="Change Project">
+              <div style="display:flex;flex-direction:column;gap:2px;overflow:hidden;text-align:left;line-height:1.35;flex:1;min-width:0;">
+                <span style="font-size:11px;font-weight:700;color:var(--primary);">${activeProject ? activeProject.project_code : 'PROJECT'}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--text-main);white-space:normal;word-break:break-word;">
+                  ${activeProject ? activeProject.name : 'Select a project...'}
+                </span>
+              </div>
+              <svg style="width:16px;height:16px;flex-shrink:0;color:var(--text-muted);margin-left:6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+
+            <!-- Custom Dropdown Menu with Full Line-by-Line Names -->
+            <div id="kanban-project-dropdown" class="custom-select-dropdown">
+              ${projects.map(p => `
+                <div class="custom-select-option ${p.id == selectedProjectId ? 'selected' : ''}" onclick="App.selectKanbanProject(${p.id})">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span class="badge badge-neutral" style="font-size:10px;font-weight:700;">${p.project_code}</span>
+                    ${p.id == selectedProjectId ? '<span style="color:var(--primary);font-weight:700;font-size:11px;">✓ Active</span>' : ''}
+                  </div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text-main);line-height:1.4;white-space:normal;word-break:break-word;">
+                    ${p.name}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Hidden native select kept for programmatic compatibility -->
+            <select id="kanban-project-select" style="display:none;" onchange="App.navigate('kanban/' + this.value)">
+              ${projects.map(p => `
+                <option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''}>${p.project_code} - ${p.name}</option>
+              `).join('')}
             </select>
           </div>
 
@@ -1012,6 +1048,20 @@ const App = {
       Realtime.joinProject(selectedProjectId);
       this.loadKanbanTasks(selectedProjectId);
     }
+  },
+
+  toggleKanbanProjectDropdown(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('kanban-project-dropdown');
+    if (dropdown) dropdown.classList.toggle('show');
+  },
+
+  selectKanbanProject(projectId) {
+    const dropdown = document.getElementById('kanban-project-dropdown');
+    if (dropdown) dropdown.classList.remove('show');
+    const sel = document.getElementById('kanban-project-select');
+    if (sel) sel.value = projectId;
+    this.navigate('kanban/' + projectId);
   },
 
   scrollKanbanCol(status) {
