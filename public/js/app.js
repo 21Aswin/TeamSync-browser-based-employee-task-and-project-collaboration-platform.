@@ -495,7 +495,7 @@ const App = {
       container.innerHTML = `
         <div class="stat-grid">${statCardsHtml}</div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-bottom:var(--space-xl);">
+        <div class="dashboard-split-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-md);margin-bottom:var(--space-xl);">
           <div class="card">
             <h3 style="font-size:15px;font-weight:600;margin-bottom:14px;">Task Status Breakdown</h3>
             <div style="display:flex;flex-direction:column;gap:10px;">
@@ -569,7 +569,7 @@ const App = {
           </button>
         ` : ''}
       </div>
-      <div id="projects-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(320px, 1fr));gap:var(--space-md);">
+      <div id="projects-list-grid" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(min(100%, 280px), 1fr));gap:var(--space-md);">
         <div style="padding:40px;text-align:center;color:var(--text-muted);grid-column:1/-1;">Loading projects...</div>
       </div>
       <div id="projects-pagination-container"></div>
@@ -717,7 +717,7 @@ const App = {
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-md);">
+        <div class="project-details-grid" style="display:grid;grid-template-columns:2fr 1fr;gap:var(--space-md);">
           <!-- Tasks list -->
           <div class="card">
             <h3 style="font-size:15px;font-weight:600;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;">
@@ -965,24 +965,25 @@ const App = {
     const selectedProjectId = projectIdFilter || (projects.length > 0 ? projects[0].id : null);
 
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-          <div style="display:flex;gap:6px;align-items:center;">
-            <label style="font-size:13px;font-weight:600;">Project:</label>
-            <select id="kanban-project-select" class="form-control" style="width:240px;" onchange="App.navigate('kanban/' + this.value)">
-              ${projects.map(p => `
-                <option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''}>${p.project_code} - ${p.name}</option>
-              `).join('')}
+      <div class="kanban-header-bar">
+        <div class="kanban-filter-group">
+          <div class="kanban-select-wrapper">
+            <label for="kanban-project-select" style="font-size:13px;font-weight:600;white-space:nowrap;">Project:</label>
+            <select id="kanban-project-select" class="form-control" onchange="App.navigate('kanban/' + this.value)">
+              ${projects.map(p => {
+                const shortName = p.name.length > 25 ? p.name.substring(0, 24) + '…' : p.name;
+                return `<option value="${p.id}" ${p.id == selectedProjectId ? 'selected' : ''} title="${p.name}">${p.project_code} — ${shortName}</option>`;
+              }).join('')}
             </select>
           </div>
 
-          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;background:var(--surface-secondary);padding:6px 10px;border-radius:var(--radius-md);border:1px solid var(--border-color);">
+          <label class="kanban-checkbox-pill">
             <input type="checkbox" id="kanban-my-tasks-only" ${this.kanbanMyTasksOnly ? 'checked' : ''} onchange="App.toggleKanbanMyTasks()">
             <span>Assigned to me only</span>
           </label>
         </div>
 
-        <div style="display:flex;gap:10px;">
+        <div class="kanban-actions-wrap">
           ${this.currentUser.role_key !== 'EMPLOYEE' && selectedProjectId ? `
             <button class="btn btn-primary" onclick="App.openCreateTaskModal(${selectedProjectId})">
               <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
@@ -990,6 +991,16 @@ const App = {
             </button>
           ` : ''}
         </div>
+      </div>
+
+      <!-- Mobile Quick Column Tabs -->
+      <div class="kanban-mobile-tabs" id="kanban-mobile-tabs">
+        <button class="kanban-tab-btn active" data-col="ALL" onclick="App.scrollKanbanCol('ALL')">All</button>
+        <button class="kanban-tab-btn" data-col="TODO" onclick="App.scrollKanbanCol('TODO')">To Do</button>
+        <button class="kanban-tab-btn" data-col="IN_PROGRESS" onclick="App.scrollKanbanCol('IN_PROGRESS')">In Progress</button>
+        <button class="kanban-tab-btn" data-col="UNDER_REVIEW" onclick="App.scrollKanbanCol('UNDER_REVIEW')">Review</button>
+        <button class="kanban-tab-btn" data-col="COMPLETED" onclick="App.scrollKanbanCol('COMPLETED')">Done</button>
+        <button class="kanban-tab-btn" data-col="BLOCKED" onclick="App.scrollKanbanCol('BLOCKED')">Blocked</button>
       </div>
 
       <div class="kanban-board" id="kanban-columns-wrapper">
@@ -1000,6 +1011,24 @@ const App = {
     if (selectedProjectId) {
       Realtime.joinProject(selectedProjectId);
       this.loadKanbanTasks(selectedProjectId);
+    }
+  },
+
+  scrollKanbanCol(status) {
+    document.querySelectorAll('.kanban-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-col') === status);
+    });
+
+    const wrapper = document.getElementById('kanban-columns-wrapper');
+    if (!wrapper) return;
+
+    if (status === 'ALL') {
+      wrapper.scrollTo({ left: 0, behavior: 'smooth' });
+    } else {
+      const col = wrapper.querySelector(`.kanban-col[data-status="${status}"]`);
+      if (col) {
+        col.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }
     }
   },
 
@@ -1525,9 +1554,10 @@ const App = {
             <div class="form-group">
               <label class="form-label">Project <span class="req">*</span></label>
               <select id="new-task-project" class="form-control" onchange="App.loadTaskAssigneeOptions(this.value)" required>
-                ${projects.map(p => `
-                  <option value="${p.id}" ${p.id == activeProjectId ? 'selected' : ''}>${p.project_code} - ${p.name}</option>
-                `).join('')}
+                ${projects.map(p => {
+                  const shortName = p.name.length > 28 ? p.name.substring(0, 26) + '…' : p.name;
+                  return `<option value="${p.id}" ${p.id == activeProjectId ? 'selected' : ''} title="${p.name}">${p.project_code} — ${shortName}</option>`;
+                }).join('')}
               </select>
             </div>
             <div class="form-group">
