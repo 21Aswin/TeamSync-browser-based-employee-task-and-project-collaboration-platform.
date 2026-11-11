@@ -634,9 +634,62 @@ const App = {
   },
 
   /* -------------------------------------------------------------
-     UNIVERSAL IN-DOM CUSTOM SELECT ENHANCER
+     UNIVERSAL IN-DOM CUSTOM SELECT ENHANCER & DROPDOWN CONTROLS
      Guarantees ALL dropdown options stay strictly inside phone body
      ------------------------------------------------------------- */
+  formatStatus(status) {
+    if (!status) return 'Select option...';
+    const map = {
+      'PLANNING': 'Planning',
+      'ACTIVE': 'Active',
+      'ON_HOLD': 'On Hold',
+      'COMPLETED': 'Completed',
+      'TODO': 'To Do',
+      'IN_PROGRESS': 'In Progress',
+      'UNDER_REVIEW': 'Under Review',
+      'BLOCKED': 'Blocked',
+      'LOW': 'Low',
+      'MEDIUM': 'Medium',
+      'HIGH': 'High',
+      'URGENT': 'Urgent'
+    };
+    return map[status] || String(status).replace(/_/g, ' ');
+  },
+
+  toggleDropdown(dropdownId, e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const wrapper = dropdown.closest('.custom-select-wrapper');
+    const wasOpen = dropdown.classList.contains('show');
+    document.querySelectorAll('.custom-select-dropdown.show').forEach((d) => d.classList.remove('show'));
+    document.querySelectorAll('.custom-select-wrapper.is-open').forEach((w) => w.classList.remove('is-open'));
+    if (!wasOpen) {
+      dropdown.classList.add('show');
+      if (wrapper) wrapper.classList.add('is-open');
+    }
+  },
+
+  selectOption(targetInputId, value, label) {
+    const input = document.getElementById(targetInputId);
+    if (input) {
+      input.value = value;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const labelSpan = document.getElementById(targetInputId + '-text');
+    if (labelSpan) labelSpan.textContent = label;
+
+    const wrapper = input ? input.closest('.custom-select-wrapper') : null;
+    if (wrapper) {
+      wrapper.querySelectorAll('.custom-select-option').forEach(opt => {
+        opt.classList.toggle('selected', opt.getAttribute('data-value') === String(value) || opt.textContent.trim().startsWith(label));
+      });
+      const dropdown = wrapper.querySelector('.custom-select-dropdown');
+      if (dropdown) dropdown.classList.remove('show');
+      wrapper.classList.remove('is-open');
+    }
+  },
+
   rebuildSelectOptions(select) {
     if (!select) return;
     const wrapper = select.closest('.custom-select-wrapper');
@@ -1405,12 +1458,27 @@ const App = {
               <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Status</label>
-                  <select id="edit-proj-status" class="form-control">
-                    <option value="PLANNING" ${project.status === 'PLANNING' ? 'selected' : ''}>Planning</option>
-                    <option value="ACTIVE" ${project.status === 'ACTIVE' ? 'selected' : ''}>Active</option>
-                    <option value="ON_HOLD" ${project.status === 'ON_HOLD' ? 'selected' : ''}>On Hold</option>
-                    <option value="COMPLETED" ${project.status === 'COMPLETED' ? 'selected' : ''}>Completed</option>
-                  </select>
+                  <div class="custom-select-wrapper" id="edit-proj-status-wrapper">
+                    <button type="button" id="edit-proj-status-btn" class="custom-select-trigger" onclick="App.toggleDropdown('edit-proj-status-dropdown', event)">
+                      <span id="edit-proj-status-text">${App.formatStatus(project.status)}</span>
+                      <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="edit-proj-status-dropdown" class="custom-select-dropdown">
+                      <div class="custom-select-option ${project.status === 'PLANNING' ? 'selected' : ''}" data-value="PLANNING" onclick="App.selectOption('edit-proj-status', 'PLANNING', 'Planning')">
+                        <span class="badge status-PLANNING">Planning</span>
+                      </div>
+                      <div class="custom-select-option ${project.status === 'ACTIVE' ? 'selected' : ''}" data-value="ACTIVE" onclick="App.selectOption('edit-proj-status', 'ACTIVE', 'Active')">
+                        <span class="badge status-ACTIVE">Active</span>
+                      </div>
+                      <div class="custom-select-option ${project.status === 'ON_HOLD' ? 'selected' : ''}" data-value="ON_HOLD" onclick="App.selectOption('edit-proj-status', 'ON_HOLD', 'On Hold')">
+                        <span class="badge status-ON_HOLD">On Hold</span>
+                      </div>
+                      <div class="custom-select-option ${project.status === 'COMPLETED' ? 'selected' : ''}" data-value="COMPLETED" onclick="App.selectOption('edit-proj-status', 'COMPLETED', 'Completed')">
+                        <span class="badge status-COMPLETED">Completed</span>
+                      </div>
+                    </div>
+                    <input type="hidden" id="edit-proj-status" value="${project.status}">
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Due Date & Time</label>
@@ -1781,12 +1849,21 @@ const App = {
               </div>
               <div style="grid-column:1/-1;">
                 <label class="form-label" style="margin-bottom:4px;">Change Status</label>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                  <select id="modal-status-select" class="form-control" style="flex:1;min-width:150px;">
-                    ${statuses.map(s => `
-                      <option value="${s}" ${s === task.status ? 'selected' : ''}>${s.replace('_', ' ')}</option>
-                    `).join('')}
-                  </select>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                  <div class="custom-select-wrapper" id="modal-status-wrapper" style="flex:1;min-width:140px;">
+                    <button type="button" id="modal-status-btn" class="custom-select-trigger" onclick="App.toggleDropdown('modal-status-dropdown', event)">
+                      <span id="modal-status-select-text">${App.formatStatus(task.status)}</span>
+                      <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="modal-status-dropdown" class="custom-select-dropdown">
+                      ${statuses.map(s => `
+                        <div class="custom-select-option ${s === task.status ? 'selected' : ''}" data-value="${s}" onclick="App.selectOption('modal-status-select', '${s}', '${App.formatStatus(s)}')">
+                          <span class="badge status-${s}">${s.replace('_', ' ')}</span>
+                        </div>
+                      `).join('')}
+                    </div>
+                    <input type="hidden" id="modal-status-select" value="${task.status}">
+                  </div>
                   <button class="btn btn-primary btn-sm" onclick="App.handleStatusUpdateFromModal(${task.id})">Update Status</button>
                 </div>
               </div>
@@ -1915,21 +1992,37 @@ const App = {
               <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Priority</label>
-                  <select id="edit-task-priority" class="form-control">
-                    <option value="LOW" ${task.priority === 'LOW' ? 'selected' : ''}>Low</option>
-                    <option value="MEDIUM" ${task.priority === 'MEDIUM' ? 'selected' : ''}>Medium</option>
-                    <option value="HIGH" ${task.priority === 'HIGH' ? 'selected' : ''}>High</option>
-                    <option value="URGENT" ${task.priority === 'URGENT' ? 'selected' : ''}>Urgent</option>
-                  </select>
+                  <div class="custom-select-wrapper" id="edit-task-priority-wrapper">
+                    <button type="button" id="edit-task-priority-btn" class="custom-select-trigger" onclick="App.toggleDropdown('edit-task-priority-dropdown', event)">
+                      <span id="edit-task-priority-text">${App.formatStatus(task.priority)}</span>
+                      <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="edit-task-priority-dropdown" class="custom-select-dropdown">
+                      <div class="custom-select-option ${task.priority === 'LOW' ? 'selected' : ''}" data-value="LOW" onclick="App.selectOption('edit-task-priority', 'LOW', 'Low')"><span class="badge priority-LOW">Low</span></div>
+                      <div class="custom-select-option ${task.priority === 'MEDIUM' ? 'selected' : ''}" data-value="MEDIUM" onclick="App.selectOption('edit-task-priority', 'MEDIUM', 'Medium')"><span class="badge priority-MEDIUM">Medium</span></div>
+                      <div class="custom-select-option ${task.priority === 'HIGH' ? 'selected' : ''}" data-value="HIGH" onclick="App.selectOption('edit-task-priority', 'HIGH', 'High')"><span class="badge priority-HIGH">High</span></div>
+                      <div class="custom-select-option ${task.priority === 'URGENT' ? 'selected' : ''}" data-value="URGENT" onclick="App.selectOption('edit-task-priority', 'URGENT', 'Urgent')"><span class="badge priority-URGENT">Urgent</span></div>
+                    </div>
+                    <input type="hidden" id="edit-task-priority" value="${task.priority}">
+                  </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Assignee</label>
-                  <select id="edit-task-assignee" class="form-control">
-                    <option value="">Unassigned</option>
-                    ${members.map(m => `
-                      <option value="${m.id}" ${m.id === task.assignee_id ? 'selected' : ''}>${m.name} (${m.role_name})</option>
-                    `).join('')}
-                  </select>
+                  <div class="custom-select-wrapper" id="edit-task-assignee-wrapper">
+                    <button type="button" id="edit-task-assignee-btn" class="custom-select-trigger" onclick="App.toggleDropdown('edit-task-assignee-dropdown', event)">
+                      <span id="edit-task-assignee-text">${(members.find(m => m.id === task.assignee_id) || {}).name || 'Unassigned'}</span>
+                      <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                    </button>
+                    <div id="edit-task-assignee-dropdown" class="custom-select-dropdown">
+                      <div class="custom-select-option ${!task.assignee_id ? 'selected' : ''}" data-value="" onclick="App.selectOption('edit-task-assignee', '', 'Unassigned')">Unassigned</div>
+                      ${members.map(m => `
+                        <div class="custom-select-option ${m.id === task.assignee_id ? 'selected' : ''}" data-value="${m.id}" onclick="App.selectOption('edit-task-assignee', '${m.id}', '${m.name} (${m.role_name})')">
+                          ${m.name} <small style="color:var(--text-muted);">(${m.role_name})</small>
+                        </div>
+                      `).join('')}
+                    </div>
+                    <input type="hidden" id="edit-task-assignee" value="${task.assignee_id || ''}">
+                  </div>
                 </div>
               </div>
               <div class="form-row-2col">
@@ -2142,21 +2235,37 @@ const App = {
             <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Priority</label>
-                <select id="new-task-priority" class="form-control">
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM" selected>Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="URGENT">Urgent</option>
-                </select>
+                <div class="custom-select-wrapper" id="new-task-priority-wrapper">
+                  <button type="button" id="new-task-priority-btn" class="custom-select-trigger" onclick="App.toggleDropdown('new-task-priority-dropdown', event)">
+                    <span id="new-task-priority-text">Medium</span>
+                    <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                  </button>
+                  <div id="new-task-priority-dropdown" class="custom-select-dropdown">
+                    <div class="custom-select-option" data-value="LOW" onclick="App.selectOption('new-task-priority', 'LOW', 'Low')"><span class="badge priority-LOW">Low</span></div>
+                    <div class="custom-select-option selected" data-value="MEDIUM" onclick="App.selectOption('new-task-priority', 'MEDIUM', 'Medium')"><span class="badge priority-MEDIUM">Medium</span></div>
+                    <div class="custom-select-option" data-value="HIGH" onclick="App.selectOption('new-task-priority', 'HIGH', 'High')"><span class="badge priority-HIGH">High</span></div>
+                    <div class="custom-select-option" data-value="URGENT" onclick="App.selectOption('new-task-priority', 'URGENT', 'Urgent')"><span class="badge priority-URGENT">Urgent</span></div>
+                  </div>
+                  <input type="hidden" id="new-task-priority" value="MEDIUM">
+                </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Assignee</label>
-                <select id="new-task-assignee" class="form-control">
-                  <option value="">Unassigned</option>
-                  ${members.map(m => `
-                    <option value="${m.id}">${m.name} (${m.role_name})</option>
-                  `).join('')}
-                </select>
+                <div class="custom-select-wrapper" id="new-task-assignee-wrapper">
+                  <button type="button" id="new-task-assignee-btn" class="custom-select-trigger" onclick="App.toggleDropdown('new-task-assignee-dropdown', event)">
+                    <span id="new-task-assignee-text">Unassigned</span>
+                    <svg style="width:14px;height:14px;flex-shrink:0;color:var(--text-muted);margin-left:auto;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                  </button>
+                  <div id="new-task-assignee-dropdown" class="custom-select-dropdown">
+                    <div class="custom-select-option selected" data-value="" onclick="App.selectOption('new-task-assignee', '', 'Unassigned')">Unassigned</div>
+                    ${members.map(m => `
+                      <div class="custom-select-option" data-value="${m.id}" onclick="App.selectOption('new-task-assignee', '${m.id}', '${m.name} (${m.role_name})')">
+                        ${m.name} <small style="color:var(--text-muted);">(${m.role_name})</small>
+                      </div>
+                    `).join('')}
+                  </div>
+                  <input type="hidden" id="new-task-assignee" value="">
+                </div>
               </div>
             </div>
             <div class="form-row-2col">
@@ -2195,14 +2304,24 @@ const App = {
   },
 
   async loadTaskAssigneeOptions(projectId) {
-    const sel = document.getElementById('new-task-assignee');
-    if (!sel) return;
+    const dropdown = document.getElementById('new-task-assignee-dropdown');
+    const input = document.getElementById('new-task-assignee');
+    const textSpan = document.getElementById('new-task-assignee-text');
+    if (input) input.value = '';
+    if (textSpan) textSpan.textContent = 'Unassigned';
+    if (!dropdown) return;
+
     try {
       const proj = await API.getProject(projectId);
-      sel.innerHTML = `<option value="">Unassigned</option>` + (proj.members || []).map(m => `
-        <option value="${m.id}">${m.name} (${m.role_name})</option>
-      `).join('');
-      this.rebuildSelectOptions(sel);
+      const members = proj.members || [];
+      dropdown.innerHTML = `
+        <div class="custom-select-option selected" data-value="" onclick="App.selectOption('new-task-assignee', '', 'Unassigned')">Unassigned</div>
+        ${members.map(m => `
+          <div class="custom-select-option" data-value="${m.id}" onclick="App.selectOption('new-task-assignee', '${m.id}', '${m.name} (${m.role_name})')">
+            ${m.name} <small style="color:var(--text-muted);">(${m.role_name})</small>
+          </div>
+        `).join('')}
+      `;
     } catch (e) {
       // Ignore
     }

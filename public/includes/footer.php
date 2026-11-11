@@ -10,8 +10,8 @@
   <script src="/socket.io/socket.io.js"></script>
 
   <!-- Application Modules -->
-  <script src="/js/api.js?v=2.5.0"></script>
-  <script src="/js/socket.js?v=2.5.0"></script>
-  <script src="/js/app.js?v=2.5.0"></script>
+  <script src="/js/api.js?v=2.5.1"></script>
+  <script src="/js/socket.js?v=2.5.1"></script>
+  <script src="/js/app.js?v=2.5.1"></script>
 </body>
 </html>
