@@ -358,6 +358,254 @@ const App = {
   },
 
   /* -------------------------------------------------------------
+     CUSTOM IN-DOM DATE-TIME PICKER (Fits 100% inside mobile screen)
+     ------------------------------------------------------------- */
+  pickerState: {
+    targetId: null,
+    targetLabel: '',
+    year: new Date().getFullYear(),
+    month: new Date().getMonth(),
+    selectedDate: null,
+    hour: 9,
+    minute: 0,
+    ampm: 'AM'
+  },
+
+  openDateTimePicker(targetId, label = 'Select Date & Time') {
+    this.pickerState.targetId = targetId;
+    this.pickerState.targetLabel = label;
+
+    const currentVal = document.getElementById(targetId)?.value || '';
+    if (currentVal) {
+      const parts = this.splitDateTime(currentVal);
+      if (parts.date) {
+        this.pickerState.selectedDate = parts.date;
+        const [y, m] = parts.date.split('-').map(Number);
+        this.pickerState.year = y;
+        this.pickerState.month = m - 1;
+      }
+      if (parts.time) {
+        let [h, min] = parts.time.split(':').map(Number);
+        h = isNaN(h) ? 9 : h;
+        min = isNaN(min) ? 0 : min;
+        if (h >= 12) {
+          this.pickerState.ampm = 'PM';
+          this.pickerState.hour = h === 12 ? 12 : h - 12;
+        } else {
+          this.pickerState.ampm = 'AM';
+          this.pickerState.hour = h === 0 ? 12 : h;
+        }
+        this.pickerState.minute = Math.round(min / 5) * 5;
+        if (this.pickerState.minute >= 60) this.pickerState.minute = 55;
+      }
+    } else {
+      const now = new Date();
+      this.pickerState.year = now.getFullYear();
+      this.pickerState.month = now.getMonth();
+      const pad = (n) => String(n).padStart(2, '0');
+      this.pickerState.selectedDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+      this.pickerState.hour = 10;
+      this.pickerState.minute = 0;
+      this.pickerState.ampm = 'AM';
+    }
+
+    this.renderCustomDateTimePicker();
+  },
+
+  renderCustomDateTimePicker() {
+    let modal = document.getElementById('custom-dt-picker-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'custom-dt-picker-modal';
+      modal.className = 'modal-backdrop';
+      document.body.appendChild(modal);
+    }
+    modal.classList.add('show');
+
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const { year, month, selectedDate, hour, minute, ampm } = this.pickerState;
+
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const today = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+
+    let daysHtml = '';
+    for (let i = 0; i < firstDayIndex; i++) {
+      daysHtml += `<div class="custom-dt-day empty"></div>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+      const isSelected = selectedDate === dateStr;
+      const isToday = todayStr === dateStr;
+      const classes = ['custom-dt-day'];
+      if (isSelected) classes.push('selected');
+      if (isToday) classes.push('today');
+
+      daysHtml += `
+        <div class="${classes.join(' ')}" onclick="App.selectPickerDay('${dateStr}')">
+          ${d}
+        </div>
+      `;
+    }
+
+    let hoursHtml = '';
+    for (let h = 1; h <= 12; h++) {
+      hoursHtml += `<option value="${h}" ${h === hour ? 'selected' : ''}>${pad(h)}</option>`;
+    }
+
+    let minutesHtml = '';
+    for (let m = 0; m < 60; m += 5) {
+      minutesHtml += `<option value="${m}" ${m === minute ? 'selected' : ''}>${pad(m)}</option>`;
+    }
+
+    modal.innerHTML = `
+      <div class="custom-dt-dialog card" onclick="event.stopPropagation()">
+        <div class="custom-dt-header">
+          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(-1)">‹</button>
+          <div class="custom-dt-month-year">${months[month]} ${year}</div>
+          <button type="button" class="icon-btn btn-sm" onclick="App.changePickerMonth(1)">›</button>
+        </div>
+
+        <div class="custom-dt-calendar-grid">
+          <div class="custom-dt-day-name">Su</div>
+          <div class="custom-dt-day-name">Mo</div>
+          <div class="custom-dt-day-name">Tu</div>
+          <div class="custom-dt-day-name">We</div>
+          <div class="custom-dt-day-name">Th</div>
+          <div class="custom-dt-day-name">Fr</div>
+          <div class="custom-dt-day-name">Sa</div>
+          ${daysHtml}
+        </div>
+
+        <div class="custom-dt-time-wrap">
+          <span class="custom-dt-time-label">Time:</span>
+          <select id="custom-dt-hour" class="form-control" style="width:68px;padding:0 8px;height:36px;" onchange="App.pickerState.hour = parseInt(this.value, 10)">
+            ${hoursHtml}
+          </select>
+          <span style="font-weight:700;">:</span>
+          <select id="custom-dt-minute" class="form-control" style="width:68px;padding:0 8px;height:36px;" onchange="App.pickerState.minute = parseInt(this.value, 10)">
+            ${minutesHtml}
+          </select>
+          <div class="custom-dt-ampm-toggle">
+            <button type="button" class="ampm-btn ${ampm === 'AM' ? 'active' : ''}" onclick="App.setPickerAmPm('AM')">AM</button>
+            <button type="button" class="ampm-btn ${ampm === 'PM' ? 'active' : ''}" onclick="App.setPickerAmPm('PM')">PM</button>
+          </div>
+        </div>
+
+        <div class="custom-dt-actions">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="App.clearDateTimePicker()">Clear</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="App.confirmDateTimePicker()">Apply Date & Time</button>
+        </div>
+      </div>
+    `;
+
+    modal.onclick = (e) => {
+      if (e.target === modal) App.closeCustomDateTimePicker();
+    };
+  },
+
+  changePickerMonth(delta) {
+    let { year, month } = this.pickerState;
+    month += delta;
+    if (month < 0) {
+      month = 11;
+      year--;
+    } else if (month > 11) {
+      month = 0;
+      year++;
+    }
+    this.pickerState.year = year;
+    this.pickerState.month = month;
+    this.renderCustomDateTimePicker();
+  },
+
+  selectPickerDay(dateStr) {
+    this.pickerState.selectedDate = dateStr;
+    this.renderCustomDateTimePicker();
+  },
+
+  setPickerAmPm(ampm) {
+    this.pickerState.ampm = ampm;
+    const amBtn = document.querySelector('.ampm-btn:first-child');
+    const pmBtn = document.querySelector('.ampm-btn:last-child');
+    if (amBtn && pmBtn) {
+      amBtn.classList.toggle('active', ampm === 'AM');
+      pmBtn.classList.toggle('active', ampm === 'PM');
+    }
+  },
+
+  closeCustomDateTimePicker() {
+    const modal = document.getElementById('custom-dt-picker-modal');
+    if (modal) modal.classList.remove('show');
+  },
+
+  clearDateTimePicker() {
+    const { targetId } = this.pickerState;
+    if (targetId) {
+      const hiddenInput = document.getElementById(targetId);
+      const displaySpan = document.getElementById(targetId + '-text');
+      if (hiddenInput) hiddenInput.value = '';
+      if (displaySpan) displaySpan.textContent = 'Set date & time...';
+    }
+    this.closeCustomDateTimePicker();
+  },
+
+  confirmDateTimePicker() {
+    const { targetId, selectedDate, hour, minute, ampm } = this.pickerState;
+    if (!targetId || !selectedDate) {
+      this.closeCustomDateTimePicker();
+      return;
+    }
+
+    let h24 = hour;
+    if (ampm === 'PM' && hour < 12) h24 = hour + 12;
+    if (ampm === 'AM' && hour === 12) h24 = 0;
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const isoVal = `${selectedDate}T${pad(h24)}:${pad(minute)}`;
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const dateFormatted = `${d} ${monthNames[m - 1]} ${y}`;
+    const displayVal = `${dateFormatted}, ${pad(hour)}:${pad(minute)} ${ampm}`;
+
+    const hiddenInput = document.getElementById(targetId);
+    const displaySpan = document.getElementById(targetId + '-text');
+
+    if (hiddenInput) hiddenInput.value = isoVal;
+    if (displaySpan) displaySpan.textContent = displayVal;
+
+    this.closeCustomDateTimePicker();
+  },
+
+  formatDisplayDateTime(val) {
+    if (!val) return 'Set date & time...';
+    try {
+      const parts = this.splitDateTime(val);
+      if (!parts.date) return 'Set date & time...';
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const [y, m, d] = parts.date.split('-').map(Number);
+      const dateFormatted = `${d} ${monthNames[m - 1]} ${y}`;
+      if (!parts.time) return dateFormatted;
+      let [h, min] = parts.time.split(':').map(Number);
+      h = isNaN(h) ? 0 : h;
+      min = isNaN(min) ? 0 : min;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      let h12 = h % 12;
+      if (h12 === 0) h12 = 12;
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${dateFormatted}, ${pad(h12)}:${pad(min)} ${ampm}`;
+    } catch (e) {
+      return val;
+    }
+  },
+
+  /* -------------------------------------------------------------
      LOGIN VIEW
      ------------------------------------------------------------- */
   renderLogin() {
@@ -1004,9 +1252,12 @@ const App = {
                 </div>
                 <div class="form-group">
                   <label class="form-label">Due Date & Time</label>
-                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                    <input type="date" id="edit-proj-due-date" class="form-control" value="${dueParts.date}" title="Due Date">
-                    <input type="time" id="edit-proj-due-time" class="form-control" value="${dueParts.time}" title="Due Time">
+                  <div class="custom-dt-field" onclick="App.openDateTimePicker('edit-proj-due', 'Due Date & Time')">
+                    <input type="hidden" id="edit-proj-due" value="${project.due_date || ''}">
+                    <div class="form-control custom-dt-display">
+                      <span id="edit-proj-due-text" class="custom-dt-text">${App.formatDisplayDateTime(project.due_date)}</span>
+                      <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1031,10 +1282,7 @@ const App = {
     const name = document.getElementById('edit-proj-name').value;
     const description = document.getElementById('edit-proj-desc').value;
     const status = document.getElementById('edit-proj-status').value;
-    const due_date = App.combineDateTime(
-      document.getElementById('edit-proj-due-date')?.value,
-      document.getElementById('edit-proj-due-time')?.value
-    );
+    const due_date = document.getElementById('edit-proj-due')?.value || null;
 
     try {
       await API.updateProject(projectId, { name, description, status, due_date });
@@ -1525,16 +1773,22 @@ const App = {
               <div class="form-row-2col">
                 <div class="form-group">
                   <label class="form-label">Start Date & Time</label>
-                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                    <input type="date" id="edit-task-start-date" class="form-control" value="${startParts.date}" title="Start Date">
-                    <input type="time" id="edit-task-start-time" class="form-control" value="${startParts.time}" title="Start Time">
+                  <div class="custom-dt-field" onclick="App.openDateTimePicker('edit-task-start', 'Start Date & Time')">
+                    <input type="hidden" id="edit-task-start" value="${task.start_date || ''}">
+                    <div class="form-control custom-dt-display">
+                      <span id="edit-task-start-text" class="custom-dt-text">${App.formatDisplayDateTime(task.start_date)}</span>
+                      <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
                   </div>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Due Date & Time</label>
-                  <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                    <input type="date" id="edit-task-due-date" class="form-control" value="${dueParts.date}" title="Due Date">
-                    <input type="time" id="edit-task-due-time" class="form-control" value="${dueParts.time}" title="Due Time">
+                  <div class="custom-dt-field" onclick="App.openDateTimePicker('edit-task-due', 'Due Date & Time')">
+                    <input type="hidden" id="edit-task-due" value="${task.due_date || ''}">
+                    <div class="form-control custom-dt-display">
+                      <span id="edit-task-due-text" class="custom-dt-text">${App.formatDisplayDateTime(task.due_date)}</span>
+                      <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1560,14 +1814,8 @@ const App = {
     const description = document.getElementById('edit-task-desc').value;
     const priority = document.getElementById('edit-task-priority').value;
     const assigneeId = document.getElementById('edit-task-assignee').value || null;
-    const startDate = App.combineDateTime(
-      document.getElementById('edit-task-start-date')?.value,
-      document.getElementById('edit-task-start-time')?.value
-    );
-    const dueDate = App.combineDateTime(
-      document.getElementById('edit-task-due-date')?.value,
-      document.getElementById('edit-task-due-time')?.value
-    );
+    const startDate = document.getElementById('edit-task-start')?.value || null;
+    const dueDate = document.getElementById('edit-task-due')?.value || null;
 
     try {
       await API.updateTask(taskId, { title, description, priority, assigneeId, startDate, dueDate });
@@ -1613,16 +1861,22 @@ const App = {
             <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
-                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                  <input type="date" id="new-proj-start-date" class="form-control" title="Start Date">
-                  <input type="time" id="new-proj-start-time" class="form-control" title="Start Time">
+                <div class="custom-dt-field" onclick="App.openDateTimePicker('new-proj-start', 'Start Date & Time')">
+                  <input type="hidden" id="new-proj-start" value="">
+                  <div class="form-control custom-dt-display">
+                    <span id="new-proj-start-text" class="custom-dt-text">Set date & time...</span>
+                    <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Due Date & Time</label>
-                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                  <input type="date" id="new-proj-due-date" class="form-control" title="Due Date">
-                  <input type="time" id="new-proj-due-time" class="form-control" title="Due Time">
+                <div class="custom-dt-field" onclick="App.openDateTimePicker('new-proj-due', 'Due Date & Time')">
+                  <input type="hidden" id="new-proj-due" value="">
+                  <div class="form-control custom-dt-display">
+                    <span id="new-proj-due-text" class="custom-dt-text">Set date & time...</span>
+                    <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1660,14 +1914,8 @@ const App = {
     const name = document.getElementById('new-proj-name').value;
     const project_code = document.getElementById('new-proj-code').value;
     const description = document.getElementById('new-proj-desc').value;
-    const start_date = App.combineDateTime(
-      document.getElementById('new-proj-start-date')?.value,
-      document.getElementById('new-proj-start-time')?.value
-    );
-    const due_date = App.combineDateTime(
-      document.getElementById('new-proj-due-date')?.value,
-      document.getElementById('new-proj-due-time')?.value
-    );
+    const start_date = document.getElementById('new-proj-start')?.value || null;
+    const due_date = document.getElementById('new-proj-due')?.value || null;
 
     const member_ids = Array.from(document.querySelectorAll('input[name="proj_members"]:checked')).map(cb => parseInt(cb.value, 10));
 
@@ -1752,16 +2000,22 @@ const App = {
             <div class="form-row-2col">
               <div class="form-group">
                 <label class="form-label">Start Date & Time</label>
-                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                  <input type="date" id="new-task-start-date" class="form-control" title="Start Date">
-                  <input type="time" id="new-task-start-time" class="form-control" title="Start Time">
+                <div class="custom-dt-field" onclick="App.openDateTimePicker('new-task-start', 'Start Date & Time')">
+                  <input type="hidden" id="new-task-start" value="">
+                  <div class="form-control custom-dt-display">
+                    <span id="new-task-start-text" class="custom-dt-text">Set date & time...</span>
+                    <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
                 <label class="form-label">Due Date & Time</label>
-                <div style="display:grid;grid-template-columns:3fr 2fr;gap:6px;">
-                  <input type="date" id="new-task-due-date" class="form-control" title="Due Date">
-                  <input type="time" id="new-task-due-time" class="form-control" title="Due Time">
+                <div class="custom-dt-field" onclick="App.openDateTimePicker('new-task-due', 'Due Date & Time')">
+                  <input type="hidden" id="new-task-due" value="">
+                  <div class="form-control custom-dt-display">
+                    <span id="new-task-due-text" class="custom-dt-text">Set date & time...</span>
+                    <svg class="custom-dt-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1798,14 +2052,8 @@ const App = {
     const description = document.getElementById('new-task-desc').value;
     const priority = document.getElementById('new-task-priority').value;
     const assigneeId = document.getElementById('new-task-assignee').value || null;
-    const startDate = App.combineDateTime(
-      document.getElementById('new-task-start-date')?.value,
-      document.getElementById('new-task-start-time')?.value
-    );
-    const dueDate = App.combineDateTime(
-      document.getElementById('new-task-due-date')?.value,
-      document.getElementById('new-task-due-time')?.value
-    );
+    const startDate = document.getElementById('new-task-start')?.value || null;
+    const dueDate = document.getElementById('new-task-due')?.value || null;
 
     try {
       await API.createTask(projectId, { title, description, priority, assigneeId, startDate, dueDate });

@@ -1417,3 +1417,181 @@ textarea.form-control {
     flex-shrink: 0;
   }
 }
+
+/* ==========================================================================
+   Custom In-DOM Date & Time Picker (Strictly contained inside mobile viewport)
+   ========================================================================== */
+#custom-dt-picker-modal {
+  z-index: 1100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background-color: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+#custom-dt-picker-modal.show {
+  display: flex;
+}
+
+.custom-dt-dialog {
+  width: 100%;
+  max-width: 320px;
+  background-color: var(--surface-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.28);
+  padding: 16px;
+  box-sizing: border-box;
+  margin: auto;
+}
+
+.custom-dt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.custom-dt-month-year {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-main);
+  text-align: center;
+}
+
+.custom-dt-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.custom-dt-day-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.custom-dt-day {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  user-select: none;
+}
+
+.custom-dt-day:hover {
+  background-color: var(--surface-hover);
+}
+
+.custom-dt-day.today {
+  border: 1px solid var(--primary);
+  font-weight: 700;
+}
+
+.custom-dt-day.selected {
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  font-weight: 700;
+}
+
+.custom-dt-day.empty {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.custom-dt-time-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-color);
+  margin-bottom: 12px;
+}
+
+.custom-dt-time-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.custom-dt-ampm-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.ampm-btn {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--surface-card);
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.15s ease;
+}
+
+.ampm-btn.active {
+  background-color: var(--primary);
+  color: #fff;
+}
+
+.custom-dt-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.custom-dt-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.custom-dt-field {
+  cursor: pointer;
+}
+
+.custom-dt-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  box-sizing: border-box;
+  background-color: var(--surface-card);
+}
+
+.custom-dt-display:hover {
+  border-color: var(--primary);
+}
+
+.custom-dt-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.custom-dt-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
