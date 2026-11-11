@@ -559,9 +559,9 @@ const App = {
   async renderProjects(container) {
     document.getElementById('page-title').textContent = 'Projects';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-        <div style="display:flex;gap:10px;align-items:center;">
-          <input type="text" id="project-search-input" class="form-control" style="width:240px;" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
+      <div class="page-header-bar">
+        <div class="page-filter-group">
+          <input type="text" id="project-search-input" class="form-control" style="flex:1;min-width:200px;" placeholder="Search projects..." oninput="App.debounceProjectSearch()">
           <select id="project-status-filter" class="form-control" style="width:160px;" onchange="App.projectsPage=1; App.filterProjects()">
             <option value="">All Statuses</option>
             <option value="PLANNING">Planning</option>
@@ -659,7 +659,7 @@ const App = {
             <div style="font-size:12px;color:var(--text-muted);">
               Showing Page <b>${meta.page}</b> of <b>${meta.totalPages}</b> (Total: ${meta.total} projects)
             </div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-secondary btn-sm" ${meta.page <= 1 ? 'disabled' : ''} onclick="App.projectsPage--; App.filterProjects();">← Previous</button>
               <button class="btn btn-secondary btn-sm" ${meta.page >= meta.totalPages ? 'disabled' : ''} onclick="App.projectsPage++; App.filterProjects();">Next →</button>
             </div>
@@ -705,7 +705,7 @@ const App = {
             </div>
           </div>
 
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
             ${canManage ? `
               <button class="btn btn-secondary" onclick="App.openEditProjectModal(${project.id})">
                 <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
@@ -1286,8 +1286,8 @@ const App = {
               </div>
               <div style="grid-column:1/-1;">
                 <label class="form-label" style="margin-bottom:4px;">Change Status</label>
-                <div style="display:flex;gap:8px;">
-                  <select id="modal-status-select" class="form-control" style="width:200px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <select id="modal-status-select" class="form-control" style="flex:1;min-width:150px;">
                     ${statuses.map(s => `
                       <option value="${s}" ${s === task.status ? 'selected' : ''}>${s.replace('_', ' ')}</option>
                     `).join('')}
@@ -1318,7 +1318,7 @@ const App = {
               </div>
 
               <form onsubmit="App.handleAddComment(event, ${task.id})">
-                <div style="display:flex;gap:8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
                   <input type="text" id="modal-comment-input" class="form-control" placeholder="Add an update or comment..." required>
                   <button type="submit" class="btn btn-primary btn-sm">Post</button>
                 </div>
@@ -1700,8 +1700,10 @@ const App = {
   async renderEmployees(container) {
     document.getElementById('page-title').textContent = 'Employee Management';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
-        <input type="text" id="emp-search" class="form-control" style="width:260px;" placeholder="Search employees..." oninput="App.employeesPage=1; App.loadEmployees()">
+      <div class="page-header-bar">
+        <div class="page-filter-group">
+          <input type="text" id="emp-search" class="form-control" style="flex:1;min-width:200px;" placeholder="Search employees..." oninput="App.employeesPage=1; App.loadEmployees()">
+        </div>
         <button class="btn btn-primary" onclick="App.openCreateEmployeeModal()">
           <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
           Add Employee
@@ -1779,7 +1781,7 @@ const App = {
             <div style="font-size:12px;color:var(--text-muted);">
               Page <b>${meta.page}</b> of <b>${meta.totalPages}</b> (Total: ${meta.total} employees)
             </div>
-            <div style="display:flex;gap:8px;">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-secondary btn-sm" ${meta.page <= 1 ? 'disabled' : ''} onclick="App.employeesPage--; App.loadEmployees();">← Previous</button>
               <button class="btn btn-secondary btn-sm" ${meta.page >= meta.totalPages ? 'disabled' : ''} onclick="App.employeesPage++; App.loadEmployees();">Next →</button>
             </div>
@@ -1989,7 +1991,7 @@ const App = {
   async renderDepartments(container) {
     document.getElementById('page-title').textContent = 'Department Management';
     container.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div class="page-header-bar">
         <span style="font-size:13px;color:var(--text-muted);">Manage organizational units & team clusters</span>
         <button class="btn btn-primary" onclick="App.openCreateDepartmentModal()">
           <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"></path></svg>
